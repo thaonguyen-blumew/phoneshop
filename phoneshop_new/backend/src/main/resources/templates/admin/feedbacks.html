@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>CSKH & Phản hồi — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .feedback-card{background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);transition:var(--transition);border-top: 4px solid var(--border-color);}
+    .feedback-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+    .f-status{display:inline-flex;align-items:center;padding:4px 12px;border-radius:50px;font-size:0.7rem;font-weight:800;text-transform:uppercase}
+    .f-PENDING{background:#fff9db;color:#f08c00;border:1px solid #ffe066}
+    .f-IN_PROGRESS{background:#e7f5ff;color:#1864ab;border:1px solid #a5d8ff}
+    .f-RESOLVED{background:#ebfbee;color:#2b8a3e;border:1px solid #b2f2bb}
+    .feedback-col-title{font-size:1.1rem;font-weight:800;color:var(--navy-primary);margin-bottom:20px;display:flex;align-items:center;gap:10px}
+    .feedback-col-title i{color:var(--accent-gold)}
+    .feedback-grid{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);gap:24px;align-items:start}
+    #pendingCol, #myCol{min-width:0}
+    @media (max-width: 1100px){
+      .feedback-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color: var(--white); background: var(--accent-gold); padding: 4px 12px; border-radius: 50px;">CSKH</span>
+  </header>
+
+  <div class="admin-layout">
+        <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item active"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <h1 class="mb-24" style="color: var(--navy-primary); font-weight: 800;">Trung tâm hỗ trợ khách hàng</h1>
+      
+      <div th:if="${success}" class="alert alert-success" th:text="${success}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+      <div th:if="${error}" class="alert alert-error" th:text="${error}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+
+      <div class="toolbar" style="background: var(--white); padding: 16px; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 30px; border: 1px solid var(--border-color);">
+        <form th:action="@{/admin/feedbacks}" method="get" id="filterForm" class="flex gap-16 flex-wrap items-center">
+          <div style="position: relative; flex: 1; max-width: 300px;">
+            <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+            <input type="text" name="search" class="form-input" placeholder="Tìm tiêu đề, nội dung..." th:value="${search}" style="padding-left: 40px; border-radius: 50px;" onchange="this.form.submit()">
+          </div>
+          <select name="status" id="globalStatusFilter" class="form-input" style="max-width:180px; border-radius: 50px;" onchange="this.form.submit()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="PENDING" th:selected="${currentFilter == 'PENDING'}">Chờ xử lý</option>
+            <option value="IN_PROGRESS" th:selected="${currentFilter == 'IN_PROGRESS'}">Đang xử lý</option>
+            <option value="RESOLVED" th:selected="${currentFilter == 'RESOLVED'}">Đã giải quyết</option>
+          </select>
+          <div class="flex items-center gap-8">
+            <span class="text-xs fw-700 text-muted uppercase">Từ:</span>
+            <input type="date" name="startDate" id="startDate" class="form-input" th:value="${startDate}" onchange="this.form.submit()" style="width:140px; border-radius: 50px;">
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="text-xs fw-700 text-muted uppercase">Đến:</span>
+            <input type="date" name="endDate" id="endDate" class="form-input" th:value="${endDate}" onchange="this.form.submit()" style="width:140px; border-radius: 50px;">
+          </div>
+          <a th:href="@{/admin/feedbacks}" class="btn btn-outline" style="border-radius: 50px; padding: 10px 24px;">XÓA BỘ LỌC</a>
+        </form>
+      </div>
+
+      <div class="feedback-grid">
+        <!-- Column 1: Chờ xử lý -->
+        <div id="pendingCol" th:if="${currentFilter == '' or currentFilter == 'PENDING'}">
+          <h4 class="feedback-col-title"><i class="fas fa-inbox"></i> Phản hồi mới chờ xử lý</h4>
+          <div th:each="f : ${pendingFeedbacks}" class="feedback-card mb-20" style="border-top-color: var(--warning);">
+            <div class="flex justify-between items-start mb-12">
+              <div>
+                <div class="fw-800" style="color: var(--navy-primary);" th:text="${f.customerName}">Khách hàng</div>
+                <div class="text-xs text-muted fw-600 mt-4" th:text="${#temporals.format(f.createdAt, 'dd/MM/yyyy HH:mm')}"></div>
+              </div>
+              <span class="f-status f-PENDING">Mới</span>
+            </div>
+            <div class="text-sm mb-20" style="line-height:1.6; color: var(--text-main); background: var(--bg-light); padding: 15px; border-radius: 12px;" th:text="${f.content}"></div>
+            <form th:action="@{/admin/feedbacks/{id}/assign(id=${f.feedbackId})}" method="post" style="margin:0">
+               <button type="submit" class="btn btn-primary w-full" style="border-radius: 50px; padding: 12px;">NHẬN XỬ LÝ</button>
+            </form>
+          </div>
+          <div th:if="${pendingFeedbacks.isEmpty()}" class="text-center text-muted py-30" style="background: var(--white); border-radius: 12px; border: 1px dashed var(--border-color);">Không có yêu cầu mới</div>
+        </div>
+
+        <!-- Column 2: Đang & Đã xử lý -->
+        <div id="myCol">
+          <h4 class="feedback-col-title"><i class="fas fa-user-check"></i> Nhật ký xử lý hỗ trợ</h4>
+          <div th:each="f : ${myFeedbacks}" class="feedback-card mb-20" th:style="'border-top-color: ' + (${f.status == 'IN_PROGRESS' ? 'var(--accent)' : 'var(--success)'})">
+            <div class="flex justify-between items-start mb-12">
+              <div>
+                <div class="fw-800" style="color: var(--navy-primary);" th:text="${f.customerName}">Khách hàng</div>
+                <div class="text-xs text-muted fw-600 mt-4" th:text="${#temporals.format(f.createdAt, 'dd/MM/yyyy HH:mm')}"></div>
+              </div>
+              <span th:class="'f-status f-' + ${f.status}" th:text="${f.status == 'IN_PROGRESS' ? 'Đang giải quyết' : 'Hoàn tất'}"></span>
+            </div>
+            <div class="text-sm mb-20" style="line-height:1.6; color: var(--text-main);" th:text="${f.content}"></div>
+            
+            <div th:if="${f.status == 'IN_PROGRESS'}" style="background:var(--bg-light); padding:20px; border-radius:12px; border: 1px solid var(--border-color);">
+              <form th:action="@{/admin/feedbacks/{id}/resolve(id=${f.feedbackId})}" method="post" style="margin:0">
+                <label class="form-label fw-700 mb-8">Nội dung phản hồi:</label>
+                <textarea name="resolution" class="form-input text-sm mb-12" style="min-height:100px; resize:vertical; border-radius: 10px;" placeholder="Viết câu trả lời cho khách hàng tại đây..." required></textarea>
+                <button type="submit" class="btn btn-success w-full" style="border-radius: 50px; padding: 12px;"><i class="fas fa-check"></i> XÁC NHẬN GIẢI QUYẾT</button>
+              </form>
+            </div>
+            <div th:if="${f.status == 'RESOLVED'}" style="background:rgba(52,199,89,0.05); padding:15px; border-left:4px solid var(--success); border-radius: 0 12px 12px 0;">
+               <div class="fw-800 text-success mb-8 text-xs uppercase letter-spacing-1">Câu trả lời từ hệ thống:</div>
+               <div class="text-sm fw-600" style="color: var(--navy-primary);" th:text="${f.resolution}"></div>
+            </div>
+          </div>
+          <div th:if="${myFeedbacks.isEmpty()}" class="text-center text-muted py-30" style="background: var(--white); border-radius: 12px; border: 1px dashed var(--border-color);">Chưa có phản hồi nào được xử lý</div>
+        </div>
+      </div>
+      <div id="pagination" class="pagination-container" style="margin-top: 24px; display: flex; justify-content: center; gap: 8px;"></div>
+    </main>
+  </div>
+  <style>
+    .pagination-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: white;
+        color: var(--navy-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .pagination-btn:hover { background: var(--bg-light); border-color: var(--navy-primary); }
+    .pagination-btn.active { background: var(--navy-primary); color: white; border-color: var(--navy-primary); }
+  </style>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    }
+
+    // --- Pagination Logic ---
+    const ITEMS_PER_PAGE = 10;
+    let currentPage = 1;
+
+    function initPagination() {
+      const cards = Array.from(document.querySelectorAll('.feedback-card'));
+      if (cards.length === 0) return;
+
+      const totalPages = Math.ceil(cards.length / ITEMS_PER_PAGE);
+      const container = document.getElementById('pagination');
+
+      function showPage(page) {
+        currentPage = page;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+
+        cards.forEach((card, index) => {
+          card.style.display = (index >= start && index < end) ? '' : 'none';
+        });
+
+        renderControls();
+      }
+
+      function renderControls() {
+        container.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            const btn = document.createElement('button');
+            btn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+            btn.innerText = i;
+            btn.onclick = () => { 
+                showPage(i); 
+                window.scrollTo({top:0, behavior:'smooth'}); 
+            };
+            container.appendChild(btn);
+          } else if (i === currentPage - 2 || i === currentPage + 2) {
+            const dots = document.createElement('span');
+            dots.innerText = '...';
+            dots.style.alignSelf = 'flex-end';
+            dots.style.paddingBottom = '8px';
+            container.appendChild(dots);
+          }
+        }
+      }
+
+      showPage(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', initPagination);
+  </script>
+  </div>
+  <script>
+    function toggleSidebar(){
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

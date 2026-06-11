@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Đã xảy ra lỗi — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body style="display:flex; flex-direction:column; min-height:100vh; align-items:center; justify-content:center; background:var(--bg); text-align:center;">
+  
+  <div style="max-width:500px; padding:32px;">
+      <i class="fas fa-exclamation-triangle text-danger" style="font-size:4rem; margin-bottom:16px;"></i>
+      <h1 style="font-size:2rem; margin-bottom:8px;">Oops! Đã xảy ra lỗi</h1>
+      
+      <p style="color:var(--text-secondary); margin-bottom:24px;">
+          <span th:if="${status != null}">Mã lỗi: <b th:text="${status}">404</b>. </span>
+          Trang bạn đang tìm kiếm không tồn tại hoặc bạn không có quyền truy cập.
+      </p>
+
+      <div th:if="${message != null and message != 'No message available'}" style="margin-bottom:24px; padding:12px; background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius-sm); font-size:0.875rem; color:var(--text-muted); word-break:break-word;">
+          <code th:text="${message}"></code>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:center;">
+          <button onclick="history.back()" class="btn btn-outline">Quay lại</button>
+          <a th:href="@{/}" class="btn btn-primary">Trang chủ</a>
+      </div>
+  </div>
+
+</body>
+</html>

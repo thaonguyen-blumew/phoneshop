@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Quản lý sản phẩm — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .product-form-grid{display:grid;gap:16px}
+    @media(min-width:768px){.product-form-grid{grid-template-columns:1fr 1fr}.product-form-grid .full{grid-column:1/-1}}
+    .variant-card{background:var(--bg-light);border:1px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:12px;}
+    .variant-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    .variant-title{font-weight:700;color:var(--navy-primary);font-size:.9rem;}
+    .variant-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+    @media(max-width:640px){.variant-grid{grid-template-columns:1fr 1fr;}}
+    .variant-grid .v-full{grid-column:1/-1;}
+    .pagination-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--border-color);background:white;color:var(--navy-primary);font-weight:600;cursor:pointer;transition:all .2s;}
+    .pagination-btn:hover{background:var(--bg-light);border-color:var(--navy-primary);}
+    .pagination-btn.active{background:var(--navy-primary);color:white;border-color:var(--navy-primary);}
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color: var(--white); background: var(--accent-gold); padding: 4px 12px; border-radius: 50px;">SẢN PHẨM</span>
+  </header>
+
+  <div class="admin-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item active"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <div class="flex justify-between items-center mb-24">
+        <h1 style="color: var(--navy-primary); font-weight: 800;">Quản lý sản phẩm</h1>
+        <button class="btn btn-primary" onclick="openProductForm()" style="padding: 12px 24px; border-radius: 50px; font-weight: 700; box-shadow: 0 4px 15px rgba(0,35,71,0.2);">
+          <i class="fas fa-plus"></i> THÊM SẢN PHẨM
+        </button>
+      </div>
+
+      <div th:if="${success}" class="alert alert-success" th:text="${success}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+      <div th:if="${error}" class="alert alert-error" th:text="${error}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+
+      <div class="toolbar" style="background: var(--white); padding: 16px; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 24px; border: 1px solid var(--border-color);">
+        <form id="filterForm" th:action="@{/admin/products}" method="get" style="display:flex; gap:12px; align-items:center; flex:1;">
+            <div style="position: relative; flex: 1; max-width: 300px;">
+              <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+              <input type="text" class="form-input" placeholder="Tìm tên sản phẩm, mã..." name="search" th:value="${search}" style="padding-left: 40px; border-radius: 50px;">
+            </div>
+            <select class="form-input" name="statusFilter" style="max-width:200px; border-radius: 50px;" onchange="document.getElementById('filterForm').submit()">
+                <option value="" th:selected="${statusFilter == null or statusFilter == ''}">Tất cả trạng thái</option>
+                <option value="ACTIVE" th:selected="${statusFilter == 'ACTIVE'}">Hoạt động</option>
+                <option value="INACTIVE" th:selected="${statusFilter == 'INACTIVE'}">Ngừng kinh doanh</option>
+            </select>
+            <button type="submit" class="btn btn-outline" style="border-radius: 50px; padding: 10px 24px;">Lọc</button>
+        </form>
+      </div>
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Ảnh</th>
+              <th>Tên sản phẩm</th>
+              <th>Giá niêm yết</th>
+              <th>Tồn kho</th>
+              <th>Trạng thái</th>
+              <th style="text-align: right;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+             <tr th:if="${products.isEmpty()}"><td colspan="6" class="text-center text-muted" style="padding:48px">Không tìm thấy sản phẩm nào</td></tr>
+             <tr th:each="p : ${products}">
+              <td style="width:80px">
+                <div style="width:56px; height:56px; border-radius:12px; overflow:hidden; background: var(--bg-light); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+                  <img th:src="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : 'https://placehold.co/56x56/f5f5f7/999?text=SP'}"
+                       style="width:100%; height:100%; object-fit:contain;"
+                       onerror="this.src='https://placehold.co/56x56/f5f5f7/999?text=SP'">
+                </div>
+              </td>
+              <td>
+                <div class="fw-700" style="font-size: 0.95rem; color: var(--navy-primary);" th:text="${p.name}"></div>
+                <div class="text-xs text-muted mt-4" style="font-weight: 500;"><span th:text="${p.brand}"></span> • <span th:text="${p.categoryName}"></span></div>
+              </td>
+              <td class="fw-700" style="color: var(--navy-primary);" th:text="${#numbers.formatDecimal(p.price, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></td>
+              <td class="fw-600" th:text="${p.totalStock}"></td>
+              <td>
+                <span th:class="'badge ' + (${p.status == 'ACTIVE' ? 'badge-active' : 'badge-inactive'})"
+                      th:text="${p.status == 'ACTIVE' ? 'Đang bán' : 'Tạm ẩn'}"></span>
+              </td>
+              <td style="text-align: right;">
+                <div class="flex gap-8 justify-end">
+                  <button class="btn btn-outline btn-sm" style="border-radius: 8px; width: 36px; height: 36px; padding: 0;" th:onclick="'openProductFormEdit(' + ${p.productId} + ')'" title="Chỉnh sửa"><i class="fas fa-edit"></i></button>
+                  <form th:action="@{/admin/products/{id}/toggle(id=${p.productId})}" method="post" style="display:inline">
+                    <input type="hidden" name="action" th:value="${p.status == 'ACTIVE' ? 'delete' : 'restore'}">
+                    <button type="submit" class="btn btn-sm" th:classappend="${p.status == 'ACTIVE' ? 'btn-danger' : 'btn-success'}"
+                            style="border-radius: 8px; width: 36px; height: 36px; padding: 0;" th:title="${p.status == 'ACTIVE' ? 'Ngừng kinh doanh' : 'Mở bán lại'}">
+                      <i th:class="${p.status == 'ACTIVE' ? 'fas fa-trash' : 'fas fa-undo'}"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="pagination" class="pagination-container" style="margin-top: 24px; display: flex; justify-content: center; gap: 8px;"></div>
+    </main>
+  </div>
+
+  <!-- Modal Thêm/Sửa sản phẩm -->
+  <div class="modal-overlay hidden" id="productModal" onclick="if(event.target === this) closeProductForm()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="flex justify-between items-center mb-16">
+        <h3 id="modalTitle" style="color: var(--navy-primary); font-weight: 800;">Thêm sản phẩm</h3>
+        <button class="header-icon" onclick="closeProductForm()"><i class="fas fa-times"></i></button>
+      </div>
+      <form th:action="@{/admin/products/save}" method="post" id="productForm">
+        <input type="hidden" name="productId" id="productId">
+
+        <!-- Thông tin chung sản phẩm -->
+        <div class="product-form-grid" style="margin-bottom: 20px;">
+          <div class="form-group full">
+            <label class="form-label fw-700">Tên sản phẩm</label>
+            <input type="text" name="name" id="productName" class="form-input" required placeholder="VD: iPhone 15 Pro Max">
+          </div>
+          <div class="form-group">
+            <label class="form-label fw-700">Thương hiệu</label>
+            <input type="text" name="brand" id="brand" class="form-input" required placeholder="Apple, Samsung, Xiaomi...">
+          </div>
+          <div class="form-group">
+            <label class="form-label fw-700">Danh mục</label>
+            <select name="categoryId" id="categoryId" class="form-input" required>
+               <option th:each="c : ${categories}" th:value="${c.categoryId}" th:text="${c.name}"></option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label fw-700">Trạng thái</label>
+            <select name="status" id="status" class="form-input">
+              <option value="ACTIVE">Đang bán</option>
+              <option value="INACTIVE">Tạm ẩn</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label fw-700">Mô tả</label>
+            <textarea name="description" id="description" class="form-input" style="min-height:72px;resize:vertical" placeholder="Mô tả ngắn về sản phẩm..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phần Variants -->
+        <div style="border-top: 2px solid var(--border-color); padding-top: 16px; margin-bottom: 16px;">
+          <div class="flex justify-between items-center mb-12">
+            <span class="fw-700" style="color: var(--navy-primary); font-size: 1rem;">
+              <i class="fas fa-layer-group" style="margin-right: 6px; color: var(--accent-gold);"></i>Phiên bản sản phẩm
+            </span>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addVariant({})" style="border-radius: 8px; font-weight: 600; padding: 6px 16px;">
+              <i class="fas fa-plus"></i> Thêm phiên bản
+            </button>
+          </div>
+          <p class="text-xs text-muted" style="margin-bottom: 12px;">Mỗi phiên bản là một tổ hợp dung lượng + màu sắc khác nhau (VD: 128GB Đen, 256GB Xanh...)</p>
+          <div id="variantsContainer"></div>
+        </div>
+
+        <div class="flex gap-8 justify-end" style="padding-top: 8px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-outline" onclick="closeProductForm()">Hủy bỏ</button>
+          <button type="submit" class="btn btn-primary" style="min-width: 140px;">Lưu sản phẩm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script th:inline="javascript">
+    const productsData = /*[[${products}]]*/ [];
+
+    function buildVariantCard(index, data) {
+        data = data || {};
+        var vid = data.variantId || '';
+        var storage = data.storageGb || '';
+        var color = data.color || '';
+        var sku = data.sku || '';
+        var price = data.price || '';
+        var importPrice = data.importPrice || '';
+        var stock = data.stockQty || '';
+        var imgUrl = (data.images && data.images[0])
+            ? (data.images[0].imageUrl || data.images[0].url || '') : '';
+        var removeBtnHtml = index > 0
+            ? '<button type="button" class="btn btn-danger btn-sm" onclick="removeVariant(' + index + ')" style="border-radius:8px;padding:4px 12px;font-size:0.78rem;"><i class="fas fa-trash"></i> Xóa</button>'
+            : '';
+        return '<div class="variant-card" id="variantCard_' + index + '">' +
+            '<input type="hidden" name="variants[' + index + '].variantId" value="' + vid + '">' +
+            '<div class="variant-header">' +
+              '<span class="variant-title"><i class="fas fa-cube" style="margin-right:6px;color:var(--accent-gold);"></i>Phiên bản #' + (index + 1) + '</span>' +
+              removeBtnHtml +
+            '</div>' +
+            '<div class="variant-grid">' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">Dung lượng (GB)</label>' +
+              '<input type="number" name="variants[' + index + '].storageGb" class="form-input" min="1" value="' + storage + '" placeholder="128, 256..."></div>' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">Màu sắc</label>' +
+              '<input type="text" name="variants[' + index + '].color" class="form-input" value="' + color + '" placeholder="Đen Midnight, Xanh Dương..."></div>' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">SKU</label>' +
+              '<input type="text" name="variants[' + index + '].sku" class="form-input" value="' + sku + '" placeholder="VD: IP15-256-BLK"></div>' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">Giá bán (₫)</label>' +
+              '<input type="number" name="variants[' + index + '].price" class="form-input" min="0" value="' + price + '" placeholder="8990000"></div>' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">Giá nhập (₫)</label>' +
+              '<input type="number" name="variants[' + index + '].importPrice" class="form-input" min="0" value="' + importPrice + '" placeholder="7000000"></div>' +
+              '<div class="form-group"><label class="form-label" style="font-size:.8rem;font-weight:600;">Tồn kho</label>' +
+              '<input type="number" name="variants[' + index + '].stockQty" class="form-input" min="0" value="' + stock + '" placeholder="50"></div>' +
+              '<div class="form-group v-full"><label class="form-label" style="font-size:.8rem;font-weight:600;">URL ảnh đại diện</label>' +
+              '<input type="url" name="variants[' + index + '].images[0].url" class="form-input" value="' + imgUrl + '" placeholder="https://...">' +
+              '<input type="hidden" name="variants[' + index + '].images[0].isPrimary" value="true"></div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function addVariant(data) {
+        var container = document.getElementById('variantsContainer');
+        var index = container.querySelectorAll('.variant-card').length;
+        container.insertAdjacentHTML('beforeend', buildVariantCard(index, data || {}));
+    }
+
+    function removeVariant(index) {
+        var card = document.getElementById('variantCard_' + index);
+        if (card) { card.remove(); reindexVariants(); }
+    }
+
+    function reindexVariants() {
+        var cards = document.getElementById('variantsContainer').querySelectorAll('.variant-card');
+        cards.forEach(function(card, i) {
+            card.id = 'variantCard_' + i;
+            card.querySelector('.variant-title').innerHTML =
+                '<i class="fas fa-cube" style="margin-right:6px;color:var(--accent-gold);"></i>Phiên bản #' + (i + 1);
+            card.querySelectorAll('[name]').forEach(function(el) {
+                el.name = el.name.replace(/variants\[\d+\]/, 'variants[' + i + ']');
+            });
+            var btn = card.querySelector('.btn-danger');
+            if (i === 0) {
+                if (btn) btn.remove();
+            } else {
+                if (!btn) {
+                    card.querySelector('.variant-header').insertAdjacentHTML('beforeend',
+                        '<button type="button" class="btn btn-danger btn-sm" onclick="removeVariant(' + i + ')" style="border-radius:8px;padding:4px 12px;font-size:0.78rem;"><i class="fas fa-trash"></i> Xóa</button>');
+                } else {
+                    btn.setAttribute('onclick', 'removeVariant(' + i + ')');
+                }
+            }
+        });
+    }
+
+    function openProductForm() {
+        document.getElementById('productId').value = '';
+        document.getElementById('productName').value = '';
+        document.getElementById('brand').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('status').value = 'ACTIVE';
+        document.getElementById('modalTitle').textContent = 'Thêm sản phẩm mới';
+        document.getElementById('variantsContainer').innerHTML = '';
+        addVariant({});
+        document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function closeProductForm() {
+        document.getElementById('productModal').classList.add('hidden');
+    }
+
+    function openProductFormEdit(id) {
+        var p = productsData.find(function(x) { return x.productId === id; });
+        if (!p) return;
+        document.getElementById('productId').value = p.productId;
+        document.getElementById('productName').value = p.name || '';
+        document.getElementById('brand').value = p.brand || '';
+        document.getElementById('categoryId').value = p.categoryId || '';
+        document.getElementById('status').value = p.status || 'ACTIVE';
+        document.getElementById('description').value = p.description || '';
+        document.getElementById('variantsContainer').innerHTML = '';
+        var variants = (p.variants && p.variants.length > 0) ? p.variants : [{}];
+        variants.forEach(function(v) { addVariant(v); });
+        document.getElementById('modalTitle').textContent = 'Sửa sản phẩm';
+        document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function toggleSidebar() {
+        document.querySelector('.sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    // Pagination
+    var ITEMS_PER_PAGE = 10;
+    var currentPage = 1;
+    function initPagination() {
+        var tbody = document.querySelector('.admin-table tbody');
+        if (!tbody) return;
+        var rows = Array.from(tbody.querySelectorAll('tr')).filter(function(r) { return !r.querySelector('td[colspan]'); });
+        if (rows.length === 0) return;
+        var totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+        var container = document.getElementById('pagination');
+        function showPage(page) {
+            currentPage = page;
+            var start = (page - 1) * ITEMS_PER_PAGE;
+            rows.forEach(function(r, i) { r.style.display = (i >= start && i < start + ITEMS_PER_PAGE) ? '' : 'none'; });
+            renderControls();
+        }
+        function renderControls() {
+            container.innerHTML = '';
+            if (totalPages <= 1) return;
+            var prev = document.createElement('button');
+            prev.className = 'pagination-btn';
+            prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            prev.disabled = currentPage === 1;
+            prev.onclick = function() { showPage(currentPage - 1); };
+            container.appendChild(prev);
+            for (var i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    var btn = document.createElement('button');
+                    btn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+                    btn.innerText = i;
+                    (function(p) { btn.onclick = function() { showPage(p); }; })(i);
+                    container.appendChild(btn);
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    var dots = document.createElement('span');
+                    dots.innerText = '...';
+                    container.appendChild(dots);
+                }
+            }
+            var next = document.createElement('button');
+            next.className = 'pagination-btn';
+            next.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            next.disabled = currentPage === totalPages;
+            next.onclick = function() { showPage(currentPage + 1); };
+            container.appendChild(next);
+        }
+        showPage(1);
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        initPagination();
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(a) {
+            setTimeout(function() { a.style.opacity = '0'; setTimeout(function() { a.remove(); }, 500); }, 5000);
+        });
+    });
+  </script>
+</body>
+</html>

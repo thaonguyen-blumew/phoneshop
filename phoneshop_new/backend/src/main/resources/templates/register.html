@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Đăng ký — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg)}
+    .auth-card{width:100%;max-width:400px;background:var(--bg-card);border-radius:var(--radius-xl);padding:32px 24px;box-shadow:var(--shadow-lg)}
+    .auth-logo{text-align:center;margin-bottom:24px}
+    .auth-logo h1{font-size:1.5rem}
+    .auth-logo p{color:var(--text-secondary);font-size:0.875rem;margin-top:4px}
+    .alert { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 0.875rem; text-align: center; }
+    .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+  </style>
+</head>
+<body>
+  <div class="auth-page" style="background: var(--bg-light);">
+    <div class="auth-card" style="box-shadow: var(--shadow-premium);">
+      <div class="auth-logo">
+        <h1 style="color:var(--navy-primary); font-size: 2rem; font-weight: 800; letter-spacing: -1px;">PHONE<span style="color:var(--accent-gold)">SHOP</span></h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Gia nhập cộng đồng công nghệ cao cấp</p>
+      </div>
+
+      <div th:if="${error}" class="alert alert-error" th:text="${error}">
+        Có lỗi xảy ra.
+      </div>
+
+      <form th:action="@{/register}" method="post" class="flex-col gap-16">
+        <div class="form-group">
+          <label class="form-label">Họ và tên</label>
+          <input type="text" name="fullName" class="form-input-custom" placeholder="Nguyễn Văn A" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-input-custom" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Số điện thoại</label>
+          <input type="tel" name="phone" class="form-input-custom" placeholder="0912 345 678" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu</label>
+          <input type="password" name="password" class="form-input-custom" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+        </div>
+        <button type="submit" class="btn-cta" style="width: 100%; background: var(--navy-primary); color: white; border: none; margin-top: 10px;">ĐĂNG KÝ TÀI KHOẢN</button>
+      </form>
+      <div class="text-center mt-20">
+        <span class="text-sm text-muted">Đã có tài khoản?</span> <a th:href="@{/login}" style="color: var(--navy-primary); font-size: 0.9rem; font-weight: 700; text-decoration: none;">Đăng nhập ngay</a>
+      </div>
+      <div class="text-center mt-16">
+        <a th:href="@{/}" class="text-sm" style="color:var(--text-muted); font-weight: 600;"><i class="fas fa-arrow-left"></i> Về trang chủ</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

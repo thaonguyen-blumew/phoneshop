@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Hỗ trợ khách hàng — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .support-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+    .feedback-item{padding:12px;border:1px solid var(--border-light);border-radius:var(--radius-md);margin-bottom:8px}
+    .feedback-status{display:inline-block;padding:3px 10px;border-radius:99px;font-size:0.6875rem;font-weight:600}
+    .s-PENDING   {background:#fff3cd;color:#856404}
+    .s-IN_PROGRESS{background:#cce5ff;color:#004085}
+    .s-RESOLVED  {background:#d4edda;color:#155724}
+    .char-counter{text-align:right;font-size:0.75rem;color:var(--text-muted);margin-top:4px}
+    .alert { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 0.875rem; text-align: center; }
+    .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+    .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #4ade80; }
+    @media(min-width:768px){
+      .support-layout{display:flex;gap:24px;max-width:960px;margin:0 auto;padding:16px 32px}
+      .support-left,.support-right{flex:1}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="flex items-center gap-12">
+      <a class="header-icon" th:href="@{/}"><i class="fas fa-arrow-left"></i></a>
+      <h3>Hỗ trợ khách hàng</h3>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="support-layout" style="padding:0 16px">
+
+      <!-- Form gửi phản hồi -->
+      <div class="support-left">
+        <div class="support-card">
+          <h4 class="mb-16"><i class="fas fa-paper-plane" style="color:var(--accent);margin-right:8px"></i>Gửi phản hồi mới</h4>
+
+          <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+          <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+          <form th:action="@{/support/send}" method="post">
+            <div class="form-group mb-12">
+              <label class="form-label">Nội dung</label>
+              <textarea name="content" id="content" class="form-input" style="min-height:140px;resize:vertical"
+                        placeholder="Mô tả chi tiết vấn đề bạn gặp phải (sản phẩm, đơn hàng, dịch vụ...)"
+                        maxlength="2000" required></textarea>
+              <div class="char-counter"><span id="charCount">0</span>/2000</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-send"></i> Gửi phản hồi
+            </button>
+          </form>
+
+          <div style="margin-top:12px;padding:10px 12px;background:var(--accent-light);border-radius:var(--radius-md);font-size:0.8125rem;color:var(--accent)">
+            <i class="fas fa-clock"></i> Nhân viên sẽ phản hồi trong vòng 24 giờ làm việc.
+          </div>
+
+          <!-- Kênh liên hệ trực tiếp -->
+          <div style="margin-top:16px">
+            <div class="form-label mb-8"><i class="fas fa-comments" style="color:var(--accent);margin-right:4px"></i>Liên hệ trực tiếp</div>
+            <div style="display:flex;gap:8px">
+              <a href="https://www.facebook.com/tuan.anh.406048"
+                 target="_blank" rel="noopener"
+                 class="btn btn-lg"
+                 style="flex:1;background:#1877f2;color:#fff;border-color:#1877f2;gap:8px">
+                <i class="fab fa-facebook-f"></i> Facebook
+              </a>
+              <a href="https://zalo.me/0000000000"
+                 target="_blank" rel="noopener"
+                 class="btn btn-lg"
+                 style="flex:1;background:#0068ff;color:#fff;border-color:#0068ff;gap:8px">
+                <i class="fas fa-comment-dots"></i> Zalo
+              </a>
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;text-align:center">Thứ 2–6: 8:00–17:30 | Thứ 7: 8:00–12:00</p>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Lịch sử phản hồi -->
+      <div class="support-right">
+        <div class="support-card">
+          <div class="flex justify-between items-center mb-12">
+            <h4><i class="fas fa-history" style="color:var(--accent);margin-right:8px"></i>Lịch sử phản hồi</h4>
+          </div>
+          <div>
+            <div th:if="${feedbacks == null}" class="empty-state" style="padding:24px">
+              <p class="text-sm text-muted">Vui lòng <a th:href="@{/login}">đăng nhập</a> để xem lịch sử.</p>
+            </div>
+            <div th:if="${feedbacks != null and feedbacks.isEmpty()}" class="empty-state" style="padding:24px">
+              <i class="fas fa-inbox" style="font-size:2rem;color:var(--text-muted)"></i>
+              <p class="text-sm text-muted mt-8">Chưa có phản hồi nào</p>
+            </div>
+            <div th:if="${feedbacks != null and !feedbacks.isEmpty()}">
+                <div th:each="f : ${feedbacks}" class="feedback-item">
+                  <div class="flex justify-between items-start mb-8">
+                    <span class="text-xs text-muted" th:text="${#temporals.format(f.createdAt, 'dd/MM/yyyy')}"></span>
+                    <span class="feedback-status" th:classappend="'s-' + ${f.status}" 
+                          th:text="${f.status == 'PENDING' ? 'Chờ xử lý' : (f.status == 'IN_PROGRESS' ? 'Đang xử lý' : 'Đã giải quyết')}"></span>
+                  </div>
+
+                  <p class="text-sm" style="line-height:1.6" th:text="${f.content}"></p>
+
+                  <div th:if="${f.resolution != null}" style="margin-top:10px;padding:8px 10px;background:var(--bg);border-left:3px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:0.8125rem">
+                    <div class="text-xs fw-600" style="color:var(--success);margin-bottom:4px">Phản hồi từ nhân viên</div>
+                    <span th:text="${f.resolution}"></span>
+                    <div th:if="${f.resolvedAt != null}" class="text-xs text-muted mt-4" th:text="${#temporals.format(f.resolvedAt, 'dd/MM/yyyy')}"></div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item active"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('content').addEventListener('input', e => {
+        document.getElementById('charCount').textContent = e.target.value.length;
+      });
+    });
+  </script>
+</body>
+</html>

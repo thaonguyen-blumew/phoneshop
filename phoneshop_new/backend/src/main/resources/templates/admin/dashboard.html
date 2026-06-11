@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Dashboard Hôm Nay — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    /* CSS Utils */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: var(--transition); }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+    .stat-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
+    .stat-info { flex: 1; overflow: hidden; }
+    .stat-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat-value { font-size: 1.25rem; font-weight: 800; color: var(--navy-primary); white-space: nowrap; }
+    
+    .section-title { font-size: 1.15rem; font-weight: 800; color: var(--navy-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; padding-bottom: 8px;}
+    .section-title::after { display: none !important; }
+    .section-title i { color: var(--accent-gold); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+    @media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    
+    .card { background: var(--white); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;}
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--navy-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 10px 8px; border-bottom: 1px solid var(--border-color); text-align: left; font-size: 0.875rem; vertical-align: middle; }
+    .data-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); background: #f8f9fa; position: sticky; top: 0; z-index: 10;}
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; }
+    .pill.pending { background: #fff9db; color: #f08c00; }
+    .pill.confirmed, .pill.packing { background: #f3f0ff; color: #6741d9; }
+    .pill.shipping { background: #e3fafc; color: #0b7285; }
+    .pill.delivered { background: #ebfbee; color: #2b8a3e; }
+    .pill.cancelled { background: #fff5f5; color: #e03131; }
+
+    .mini-empty { text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.875rem; }
+
+    /* Timeline Styles */
+    .timeline { position: relative; padding-left: 24px; margin: 0; list-style: none; flex: 1; overflow-y: auto; max-height: 400px; padding-right: 8px;}
+    .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border-color); }
+    .timeline-item { position: relative; margin-bottom: 16px; }
+    .timeline-item:last-child { margin-bottom: 0; }
+    .timeline-dot { position: absolute; left: -24px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--white); border: 2px solid var(--navy-primary); z-index: 1;}
+    .timeline-dot.green { border-color: #2b8a3e; }
+    .timeline-dot.gold { border-color: var(--accent-gold); }
+    .timeline-content { background: rgba(0,0,0,0.02); border-radius: 8px; padding: 12px; border: 1px solid var(--border-color); }
+    .timeline-time { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; display: block; font-weight: 600;}
+    .timeline-text { font-size: 0.85rem; color: var(--navy-primary); font-weight: 600; margin-bottom: 2px;}
+    .timeline-sub { font-size: 0.8rem; color: var(--text-muted); }
+    .timeline-content { overflow: hidden; }
+    
+    /* Scrollbar for timeline and tables */
+    .scrollable { overflow-y: auto; max-height: 350px; }
+    .scrollable::-webkit-scrollbar { width: 6px; }
+    .scrollable::-webkit-scrollbar-track { background: transparent; }
+    .scrollable::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color: var(--white); background: var(--accent-gold); padding: 4px 12px; border-radius: 50px;">DASHBOARD HÔM NAY</span>
+  </header>
+
+  <div class="admin-layout">
+        <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item active"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+         <h1 style="color: var(--navy-primary); font-weight: 800; margin:0;">Dashboard Hôm Nay</h1>
+         <div class="text-muted fw-700" th:text="${#temporals.format(#temporals.createNow(), 'EEEE, dd/MM/yyyy')}"></div>
+      </div>
+
+      <!-- 1. Tổng quan trong ngày -->
+      <h2 class="section-title"><i class="fas fa-globe"></i> 1. Tổng quan trong ngày</h2>
+      <div class="stat-grid">
+        <div class="stat-card" style="border-top: 4px solid var(--accent-gold);">
+          <div class="stat-card-icon" style="background:rgba(197, 160, 89, 0.1);color:var(--accent-gold)"><i class="fas fa-coins"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Doanh thu hôm nay</div>
+            <div class="stat-value" th:text="${#numbers.formatDecimal(report.summary.realizedRevenue, 0, 'COMMA', 0, 'POINT')} + ' ₫'">0 ₫</div>
+          </div>
+        </div>
+        <div class="stat-card" style="border-top: 4px solid var(--navy-primary);">
+          <div class="stat-card-icon" style="background:rgba(0,35,71,0.1);color:var(--navy-primary)"><i class="fas fa-shopping-cart"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Số đơn hàng hôm nay</div>
+            <div class="stat-value" th:text="${report.summary.totalOrders}">0</div>
+          </div>
+        </div>
+        <div class="stat-card" style="border-top: 4px solid #1864ab;">
+          <div class="stat-card-icon" style="background:rgba(24,100,171,0.1);color:#1864ab"><i class="fas fa-user-plus"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Khách hàng mới hôm nay</div>
+            <div class="stat-value" th:text="${report.summary.newCustomers}">0</div>
+          </div>
+        </div>
+        <div class="stat-card" style="border-top: 4px solid #6741d9;">
+          <div class="stat-card-icon" style="background:rgba(103,65,217,0.1);color:#6741d9"><i class="fas fa-box-open"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Sản phẩm đã bán hôm nay</div>
+            <div class="stat-value" th:text="${report.summary.totalProductsSold}">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Đơn hàng hôm nay -->
+      <h2 class="section-title"><i class="fas fa-clipboard-list"></i> 2. Trạng thái đơn hàng hôm nay</h2>
+      <div class="stat-grid" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="stat-card">
+          <div class="stat-info text-center">
+            <div class="stat-value" style="color: #f08c00; font-size: 1.5rem;" th:text="${pendingOrdersCount}">0</div>
+            <div class="stat-label mt-4">Chờ xác nhận</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info text-center">
+            <div class="stat-value" style="color: #6741d9; font-size: 1.5rem;" th:text="${processingOrdersCount}">0</div>
+            <div class="stat-label mt-4">Đang xử lý</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info text-center">
+            <div class="stat-value" style="color: #0b7285; font-size: 1.5rem;" th:text="${shippingOrdersCount}">0</div>
+            <div class="stat-label mt-4">Đang giao</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info text-center">
+            <div class="stat-value" style="color: #2b8a3e; font-size: 1.5rem;" th:text="${deliveredOrdersCount}">0</div>
+            <div class="stat-label mt-4">Hoàn thành</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info text-center">
+            <div class="stat-value" style="color: #e03131; font-size: 1.5rem;" th:text="${cancelledOrdersCount}">0</div>
+            <div class="stat-label mt-4">Đã hủy</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Sản phẩm bán chạy & 4. Tồn kho -->
+      <div class="grid-2">
+        <div>
+          <h2 class="section-title"><i class="fas fa-trophy"></i> 3. Top sản phẩm bán chạy hôm nay</h2>
+          <div class="card" style="padding: 0; overflow: hidden;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th style="text-align:center;">Đã bán</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:if="${report.topProducts == null or report.topProducts.isEmpty()}">
+                  <td colspan="2" class="mini-empty">Hôm nay chưa bán được sản phẩm nào</td>
+                </tr>
+                <tr th:each="p, iter : ${report.topProducts}" th:if="${iter.index < 5}">
+                  <td class="fw-700" th:text="${p.productName}"></td>
+                  <td style="text-align:center;"><span class="pill packing" th:text="${p.quantitySold} + ' chiếc'"></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-title"><i class="fas fa-exclamation-triangle"></i> 4. Tồn kho cần chú ý</h2>
+          <div class="card scrollable" style="padding: 0;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th style="text-align:right;">Còn lại</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:if="${(outOfStockVariantList == null or outOfStockVariantList.isEmpty()) and (lowStockVariantList == null or lowStockVariantList.isEmpty())}">
+                  <td colspan="2" class="mini-empty">Tồn kho đang an toàn</td>
+                </tr>
+                <!-- Hết hàng (ưu tiên hiển thị trước) -->
+                <tr th:each="v : ${outOfStockVariantList}">
+                  <td class="fw-700" th:text="${v.product.name + ' - ' + v.sku}"></td>
+                  <td style="text-align:right;">
+                    <span class="pill cancelled" style="white-space: nowrap;">Hết hàng (0)</span>
+                  </td>
+                </tr>
+                <!-- Sắp hết -->
+                <tr th:each="v : ${lowStockVariantList}">
+                  <td class="fw-700" th:text="${v.product.name + ' - ' + v.sku}"></td>
+                  <td style="text-align:right;">
+                    <span class="pill pending" style="color:#e8590c; white-space: nowrap;" th:text="'Sắp hết (' + ${v.stockQty} + ')'"></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Hoạt động gần đây -->
+      <h2 class="section-title"><i class="fas fa-bolt"></i> 5. Hoạt động gần đây</h2>
+      <div class="grid-3">
+        <!-- Đơn hàng mới nhất -->
+        <div class="card">
+          <div class="card-title">Đơn hàng mới nhất</div>
+          <ul class="timeline">
+            <li class="timeline-item" th:each="o : ${recentOrders}">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <span class="timeline-time" th:text="${#temporals.format(o.createdAt, 'HH:mm - dd/MM')}"></span>
+                <div class="timeline-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${'Đơn hàng #' + o.orderId}"></div>
+                <div class="timeline-sub" style="display: flex; justify-content: space-between; gap: 8px;">
+                  <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${o.shippingName}"></span>
+                  <span class="fw-700" style="white-space: nowrap; color:var(--navy-primary);" th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span>
+                </div>
+              </div>
+            </li>
+            <li th:if="${recentOrders == null or recentOrders.isEmpty()}" class="mini-empty">Chưa có đơn hàng nào</li>
+          </ul>
+        </div>
+        
+        <!-- Thanh toán thành công -->
+        <div class="card">
+          <div class="card-title">Thanh toán thành công</div>
+          <ul class="timeline">
+            <li class="timeline-item" th:each="o : ${recentPaidOrders}">
+              <div class="timeline-dot green"></div>
+              <div class="timeline-content">
+                <span class="timeline-time" th:text="${#temporals.format(o.createdAt, 'HH:mm - dd/MM')}"></span>
+                <div class="timeline-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${'Thanh toán đơn #' + o.orderId}"></div>
+                <div class="timeline-sub" style="display: flex; justify-content: space-between; gap: 8px;">
+                  <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${o.shippingName}"></span>
+                  <span class="fw-700" style="white-space: nowrap; color:#2b8a3e;" th:text="'+' + ${#numbers.formatDecimal(o.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span>
+                </div>
+              </div>
+            </li>
+            <li th:if="${recentPaidOrders == null or recentPaidOrders.isEmpty()}" class="mini-empty">Chưa có giao dịch thành công</li>
+          </ul>
+        </div>
+
+        <!-- Khách hàng mới đăng ký -->
+        <div class="card">
+          <div class="card-title">Khách hàng mới</div>
+          <ul class="timeline">
+            <li class="timeline-item" th:each="c : ${recentCustomers}">
+              <div class="timeline-dot gold"></div>
+              <div class="timeline-content">
+                <span class="timeline-time" th:text="${#temporals.format(c.createdAt, 'HH:mm - dd/MM')}"></span>
+                <div class="timeline-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${c.fullName}"></div>
+                <div class="timeline-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" th:text="${c.email}"></div>
+              </div>
+            </li>
+            <li th:if="${recentCustomers == null or recentCustomers.isEmpty()}" class="mini-empty">Chưa có khách hàng mới</li>
+          </ul>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script th:inline="javascript">
+    /*<![CDATA[*/
+    /* Script section intentionally left empty since Chart.js is removed */
+    /*]]>*/
+  </script>
+  <script>
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

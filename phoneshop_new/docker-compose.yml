@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: phoneshop_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: phoneshop_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      # Nạp dữ liệu tự động từ file init_oltp.sql vào MySQL khi khởi tạo lần đầu
+      - ./init_oltp.sql:/docker-entrypoint-initdb.d/init_oltp.sql
+      # Lưu trữ dữ liệu DB bền vững
+      - db_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: phoneshop_app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Trỏ kết nối Database sang container "db" thay vì "localhost"
+      - APP_DB_URL=jdbc:mysql://db:3306/phoneshop_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh
+      - APP_DB_USERNAME=root
+      - APP_DB_PASSWORD=root
+    depends_on:
+      - db
+    volumes:
+      # Tạo volume để lưu trữ ảnh/file tải lên, tránh mất khi restart container
+      - app_uploads:/app/upload-dir
+
+volumes:
+  db_data:
+  app_uploads:

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Chi tiết đơn hàng — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .detail-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 12px
+    }
+
+    .detail-section h4 {
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .detail-section h4 i {
+      color: var(--accent)
+    }
+
+    .tracking-step {
+      display: flex;
+      gap: 12px;
+      padding: 8px 0
+    }
+
+    .tracking-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      margin-top: 4px
+    }
+
+    .tracking-dot.active {
+      background: var(--accent)
+    }
+
+    .tracking-line {
+      width: 2px;
+      background: var(--border-light);
+      margin: 0 5px
+    }
+
+    @media(min-width:768px) {
+      .detail-layout {
+        display: flex;
+        gap: 24px;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 16px 32px
+      }
+
+      .detail-left {
+        flex: 3
+      }
+
+      .detail-right {
+        flex: 2
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <div class="flex items-center gap-12"><button class="header-icon" onclick="history.back()"><i
+          class="fas fa-arrow-left"></i></button>
+      <h3>Chi tiết đơn hàng</h3>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="detail-layout" style="padding:0 16px" id="content">
+      <div class="detail-left">
+
+        <div th:if="${param.payment != null and param.payment[0] == 'success'}" class="mb-16"
+          style="padding:16px; border-radius:var(--radius-lg); background:#e6f9ed; color:#0f5132; border:1px solid #c3e6cb; display:flex; align-items:center; gap:12px;">
+          <i class="fas fa-check-circle" style="font-size:2rem; color:#198754"></i>
+          <div>
+            <div style="font-weight:700; font-size:1.1rem; margin-bottom:4px;">Thanh toán thành công!</div>
+            <div style="font-size:0.875rem; opacity:0.9;">Cảm ơn bạn. Đơn hàng đã được thanh toán và đang chờ cửa hàng
+              xác nhận.</div>
+          </div>
+        </div>
+
+        <div th:if="${success}" class="alert alert-success mb-16"
+          style="padding:12px; border-radius:var(--radius-md); background:#d4edda; color:#155724; border:1px solid #c3e6cb;">
+          <i class="fas fa-check-circle mr-8"></i> <span th:text="${success}"></span>
+        </div>
+        <div th:if="${error}" class="alert alert-danger mb-16"
+          style="padding:12px; border-radius:var(--radius-md); background:#f8d7da; color:#721c24; border:1px solid #f5c6cb;">
+          <i class="fas fa-exclamation-triangle mr-8"></i> <span th:text="${error}"></span>
+        </div>
+
+        <div class="detail-section">
+          <div class="flex justify-between items-center">
+            <h4><i class="fas fa-receipt"></i> Đơn #<span
+                th:text="${order.orderCode != null ? order.orderCode : order.orderId}"></span></h4>
+            <span class="order-status"
+              th:classappend="${order.status == 'PENDING' ? 'status-pending' : (order.status == 'CONFIRMED' ? 'status-confirmed' : (order.status == 'SHIPPING' ? 'status-shipping' : (order.status == 'DELIVERED' ? 'status-delivered' : 'status-cancelled')))}"
+              th:text="${order.status == 'PENDING' ? 'Chờ xác nhận' : (order.status == 'CONFIRMED' ? 'Đã xác nhận' : (order.status == 'SHIPPING' ? 'Đang giao' : (order.status == 'DELIVERED' ? 'Đã giao' : 'Đã hủy')))}">
+            </span>
+          </div>
+          <p class="text-sm text-muted">Ngày đặt: <span
+              th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy')}"></span></p>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-box"></i> Sản phẩm</h4>
+          <div th:each="i : ${order.items}" class="flex gap-12 mb-12"
+            style="padding:8px 0;border-bottom:1px solid var(--border-light)">
+            <img th:src="${i.imageUrl != null ? i.imageUrl : 'https://placehold.co/60x60/f5f5f7/999?text=SP'}"
+              style="width:56px;height:56px;border-radius:8px;object-fit:cover"
+              onerror="this.src='https://placehold.co/60x60/f5f5f7/999?text=SP'">
+            <div class="flex-1">
+              <div class="fw-500 text-sm" th:text="${i.productName}">SP</div>
+              <div class="text-xs text-muted"><span th:text="${i.quantity}"></span> x <span
+                  th:text="${#numbers.formatDecimal(i.unitPrice, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span></div>
+              <!-- Có thể thêm nút Đánh giá nếu order.status == DELIVERED -->
+            </div>
+            <div class="fw-600 text-sm"
+              th:text="${#numbers.formatDecimal(i.unitPrice * i.quantity, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></div>
+          </div>
+          <div class="flex justify-between mt-8"><span class="fw-700">Tổng cộng</span><span class="fw-700 text-danger"
+              style="font-size:1.125rem"
+              th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span></div>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-map-marker-alt"></i> Địa chỉ giao hàng</h4>
+          <p class="text-sm" th:text="${order.shippingName}">—</p>
+          <p class="text-sm text-muted" th:text="${order.shippingPhone}"></p>
+          <p class="text-sm text-muted" th:text="${order.shippingAddress}"></p>
+        </div>
+      </div>
+
+      <div class="detail-right">
+        <div class="detail-section">
+          <h4><i class="fas fa-truck"></i> Theo dõi vận chuyển</h4>
+          <div
+            th:with="steps=${ {'PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED'} }, labels=${ {'Đã đặt hàng', 'Đã xác nhận', 'Đang giao', 'Đã giao'} }, dates=${ {order.createdAt, order.confirmedAt, order.shippingAt, order.deliveredAt} }">
+            <div th:each="step, iter : ${steps}" class="tracking-step" th:if="${dates[iter.index] != null}">
+              <div class="tracking-dot active"></div>
+              <div>
+                <div class="text-sm fw-600" th:text="${labels[iter.index]}"></div>
+                <div class="text-xs text-muted" th:text="${#temporals.format(dates[iter.index], 'dd/MM/yyyy HH:mm')}">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-credit-card"></i> Thanh toán</h4>
+          <p class="text-sm" th:text="${order.paymentMethod}">COD</p>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-sliders-h"></i> Thao tác</h4>
+          <div class="flex flex-col gap-12">
+            <button class="btn btn-outline btn-block"
+              th:onclick="'window.location.href=\'/tracking?id=' + ${order.orderId} + '\''"><i class="fas fa-truck"></i>
+              Theo dõi đơn</button>
+
+            <form th:if="${order.status == 'PENDING' or order.status == 'CONFIRMED'}"
+              th:action="@{/orders/{id}/cancel(id=${order.orderId})}" method="post"
+              onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
+              <button type="submit" class="btn btn-danger btn-block"><i class="fas fa-ban"></i> Hủy đơn hàng</button>
+            </form>
+
+            <form th:if="${order.status == 'SHIPPING' or order.status == 'CONFIRMED'}"
+              th:action="@{/orders/{id}/complete(id=${order.orderId})}" method="post"
+              onsubmit="return confirm('Bạn xác nhận đã nhận được hàng và hàng hóa không có vấn đề gì chứ?');">
+              <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-box-open"></i> Đã nhận được
+                hàng</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item active"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+</body>
+
+</html>

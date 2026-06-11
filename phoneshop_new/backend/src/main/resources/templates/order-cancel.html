@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Hủy đơn hàng — PhoneShop</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .cancel-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+    .cancel-header{display:flex;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border-light);margin-bottom:12px}
+    .cancel-icon{width:56px;height:56px;border-radius:var(--radius-md);background:rgba(255,59,48,0.1);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:var(--danger)}
+    .cancel-info h4{margin-bottom:4px}
+    .cancel-info p{font-size:0.8125rem;color:var(--text-muted)}
+    .cancel-item{padding:12px 0;border-bottom:1px solid var(--border-light);display:flex;gap:10px}
+    .cancel-item:last-child{border-bottom:none}
+    .cancel-item-img{width:56px;height:56px;border-radius:var(--radius-sm);object-fit:cover;background:var(--bg)}
+    .cancel-item-details{flex:1}
+    .cancel-item-name{font-weight:600;font-size:0.9375rem;margin-bottom:2px}
+    .cancel-item-price{font-size:0.8125rem;color:var(--text-muted)}
+    .form-section{background:var(--bg);border-radius:var(--radius-md);padding:12px;margin-bottom:12px}
+    .form-section h5{margin-bottom:8px;font-weight:600;font-size:0.9375rem}
+    .reason-btn{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:transparent;cursor:pointer;font-size:0.8125rem;transition:all var(--transition);margin-right:8px;margin-bottom:8px}
+    .reason-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .reason-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+    .textarea-feedback{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:0.75rem;color:var(--text-muted)}
+    .action-buttons{display:flex;gap:8px;margin-top:16px}
+    @media(min-width:768px){
+      .cancel-layout{max-width:600px;margin:0 auto;padding:16px 32px}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <h3>Hủy đơn hàng</h3>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="cancel-layout" style="padding:0 16px">
+      <div id="cancelContainer"><div style="text-align:center;padding:60px"><div class="spinner"></div></div></div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a href="products.html" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a href="cart.html" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a href="orders.html" class="bottom-nav-item active"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a href="profile.html" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    let selectedReason = '';
+    document.addEventListener('DOMContentLoaded', loadOrderForCancel);
+
+    async function loadOrderForCancel() {
+      const orderId = getParam('id');
+      if (!orderId) {
+        navigate('orders.html');
+        return;
+      }
+
+      try {
+        const res = await api.get(`/api/orders/${orderId}`);
+        if (res.status === 200 && res.data) {
+          renderCancelForm(res.data);
+        } else {
+          document.getElementById('cancelContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Không tìm thấy đơn hàng</h3><a href="orders.html" class="btn btn-primary btn-sm mt-12">Quay lại</a></div>';
+        }
+      } catch {
+        document.getElementById('cancelContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Lỗi tải thông tin</h3><a href="orders.html" class="btn btn-primary btn-sm mt-12">Quay lại</a></div>';
+      }
+    }
+
+    function renderCancelForm(order) {
+      const html = `
+        <div class="cancel-card">
+          <div class="cancel-header">
+            <div class="cancel-icon"><i class="fas fa-exclamation"></i></div>
+            <div class="cancel-info">
+              <h4>Hủy đơn hàng</h4>
+              <p>#${order.orderCode || order.orderId}</p>
+            </div>
+          </div>
+          <p style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.6">
+            <strong>Lưu ý:</strong> Khi hủy đơn hàng, bạn sẽ không thể phục hồi. 
+            ${order.status === 'SHIPPING' ? 'Vì đơn hàng đang giao, vui lòng liên hệ shipper trước khi hủy.' : 'Nếu đã thanh toán, hoàn lại tiền sẽ được xử lý trong 3-5 ngày làm việc.'}
+          </p>
+        </div>
+
+        <div class="cancel-card">
+          <h4 style="margin-bottom:12px">Chi tiết đơn hàng</h4>
+          ${order.items ? order.items.map(item => `
+            <div class="cancel-item">
+              <img src="${item.imageUrl || 'https://placehold.co/56x56/f5f5f7/999?text=SP'}" class="cancel-item-img" onerror="this.src='https://placehold.co/56x56/f5f5f7/999?text=SP'">
+              <div class="cancel-item-details">
+                <div class="cancel-item-name">${item.productName || 'Sản phẩm'}</div>
+                <div class="cancel-item-price">
+                  <span>${item.quantity} x ${fmt(item.price || 0)}</span>
+                  <span style="margin-left:8px;font-weight:600;color:var(--text)">${fmt((item.price || 0) * item.quantity)}</span>
+                </div>
+              </div>
+            </div>`).join('') : ''}
+          <div style="border-top:1px solid var(--border-light);margin-top:12px;padding-top:12px">
+            <div style="display:flex;justify-content:space-between;font-weight:600">
+              <span>Tổng cộng</span>
+              <span class="text-danger" style="font-size:1.125rem">${fmt(order.totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        <form id="cancelForm" class="cancel-card">
+          <h4 style="margin-bottom:12px"><i class="fas fa-comment-dots" style="color:var(--accent);margin-right:8px"></i>Lý do hủy</h4>
+          <div class="form-section">
+            <div style="margin-bottom:8px;flex-wrap:wrap;display:flex;gap:4px">
+              <button type="button" class="reason-btn" onclick="selectReasonBtn(this,'change_mind')"><i class="fas fa-times-circle"></i> Thay đổi ý định</button>
+              <button type="button" class="reason-btn" onclick="selectReasonBtn(this,'high_price')"><i class="fas fa-money-bill"></i> Giá quá cao</button>
+              <button type="button" class="reason-btn" onclick="selectReasonBtn(this,'wrong_product')"><i class="fas fa-frown"></i> Sản phẩm sai</button>
+              <button type="button" class="reason-btn" onclick="selectReasonBtn(this,'delay')"><i class="fas fa-clock"></i> Tìm được rẻ hơn</button>
+              <button type="button" class="reason-btn" onclick="selectReasonBtn(this,'other')"><i class="fas fa-plus"></i> Khác</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Mô tả chi tiết (tùy chọn)</label>
+            <textarea id="cancelReason" class="form-input" style="min-height:100px;resize:vertical;font-family:inherit" placeholder="Vui lòng chia sẻ thêm lý do để chúng tôi cải thiện dịch vụ..."></textarea>
+            <div class="textarea-feedback">
+              <span id="charCount">0</span>
+              <span>/500 ký tự</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="flex items-center gap-8" style="cursor:pointer">
+              <input type="checkbox" id="agreeCancel" required style="accent-color:var(--accent);width:16px;height:16px">
+              <span class="text-sm">Tôi đồng ý hủy đơn hàng này</span>
+            </label>
+          </div>
+
+          <div class="action-buttons">
+            <button type="submit" class="btn btn-danger btn-block" id="confirmCancelBtn">
+              <i class="fas fa-check"></i> Xác nhận hủy
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline btn-block"><i class="fas fa-times"></i> Quay lại</a>
+          </div>
+        </form>
+      `;
+
+      document.getElementById('cancelContainer').innerHTML = html;
+      setupCancelForm(order.orderId);
+    }
+
+    function selectReasonBtn(btn, reason) {
+      document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedReason = reason;
+    }
+
+    function setupCancelForm(orderId) {
+      const textarea = document.getElementById('cancelReason');
+      const charCount = document.getElementById('charCount');
+
+      textarea.addEventListener('input', (e) => {
+        charCount.textContent = e.target.value.length;
+        if (e.target.value.length > 500) {
+          e.target.value = e.target.value.slice(0, 500);
+          charCount.textContent = '500';
+        }
+      });
+
+      document.getElementById('cancelForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!document.getElementById('agreeCancel').checked) {
+          showToast('Vui lòng đồng ý hủy đơn hàng', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('confirmCancelBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px"></div>';
+
+        try {
+          const res = await api.post(`/api/orders/${orderId}/cancel`, {
+            reason: selectedReason || 'other',
+            comment: textarea.value
+          });
+
+          if (res.status === 200) {
+            showToast('Đơn hàng đã được hủy thành công!', 'success');
+            setTimeout(() => navigate('orders.html'), 1500);
+          } else {
+            showToast(res.message || 'Lỗi hủy đơn hàng', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận hủy';
+          }
+        } catch {
+          showToast('Lỗi kết nối', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận hủy';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

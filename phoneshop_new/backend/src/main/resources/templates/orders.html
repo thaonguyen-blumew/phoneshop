@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Đơn hàng — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="mobile-btn" onclick="history.back()"><i class="fas fa-bars"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></a>
+      <nav class="nav-desktop">
+        <a th:href="@{/}" class="nav-link">Trang chủ</a>
+        <a th:href="@{/products}" class="nav-link">Sản phẩm</a>
+        <a href="#" class="nav-link">Khuyến mãi</a>
+        <a href="#" class="nav-link">Liên hệ</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      <a th:href="@{/cart}" class="header-icon"><i class="fas fa-shopping-bag"></i></a>
+      <a th:href="@{/profile}" class="header-icon"><i class="fas fa-user-circle"></i></a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="profile-layout">
+      <!-- Sidebar -->
+      <aside class="profile-sidebar desktop-only">
+        <div class="profile-header" style="background: var(--navy-primary); color: white; padding: 30px 20px; text-align: center;">
+          <div class="profile-avatar" style="width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 2rem; border: 2px solid var(--accent-gold);">
+            <i class="fas fa-user" style="color: var(--accent-gold);"></i>
+          </div>
+          <h3 th:text="${customer != null ? customer.fullName : 'Khách hàng'}" style="font-size: 1.1rem; margin-bottom: 5px;">Họ tên</h3>
+          <p th:text="${customer != null ? customer.email : ''}" style="font-size: 0.8rem; opacity: 0.7;">email@example.com</p>
+        </div>
+        <div class="profile-section" style="padding: 20px 0;">
+          <a th:href="@{/profile(tab='info')}" class="menu-item"><i class="fas fa-user-edit"></i> Thông tin cá nhân</a>
+          <a th:href="@{/orders}" class="menu-item active" style="border-left: 4px solid var(--accent-gold); background: var(--bg-light); color: var(--navy-primary); font-weight: 700;">
+            <i class="fas fa-box" style="color: var(--navy-primary);"></i> Đơn hàng của tôi
+          </a>
+          <a th:href="@{/profile(tab='addresses')}" class="menu-item"><i class="fas fa-map-marker-alt"></i> Sổ địa chỉ</a>
+          <a th:href="@{/profile(tab='password')}" class="menu-item"><i class="fas fa-lock"></i> Đổi mật khẩu</a>
+          <form th:action="@{/logout}" method="post" style="padding: 15px 20px;">
+            <button type="submit" style="width: 100%; padding: 12px; background: none; border: 1.5px solid #ff4d4f; color: #ff4d4f; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+              <i class="fas fa-sign-out-alt"></i> ĐĂNG XUẤT
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="profile-main">
+        <div class="tabs-scroll" style="background: white; padding: 0 10px; border-bottom: 1px solid var(--border-color); position: sticky; top: var(--header-h); z-index: 10;">
+          <button class="tab" th:classappend="${currentFilter == '' or currentFilter == null ? 'active' : ''}" onclick="filterTab(this,'')" style="padding: 15px 20px; font-weight: 600;">Tất cả</button>
+          <button class="tab" th:classappend="${currentFilter == 'PENDING' ? 'active' : ''}" onclick="filterTab(this,'PENDING')" style="padding: 15px 20px; font-weight: 600;">Chờ xử lý</button>
+          <button class="tab" th:classappend="${currentFilter == 'CONFIRMED' ? 'active' : ''}" onclick="filterTab(this,'CONFIRMED')" style="padding: 15px 20px; font-weight: 600;">Đã xác nhận</button>
+          <button class="tab" th:classappend="${currentFilter == 'SHIPPING' ? 'active' : ''}" onclick="filterTab(this,'SHIPPING')" style="padding: 15px 20px; font-weight: 600;">Đang giao</button>
+          <button class="tab" th:classappend="${currentFilter == 'DELIVERED' ? 'active' : ''}" onclick="filterTab(this,'DELIVERED')" style="padding: 15px 20px; font-weight: 600;">Đã giao</button>
+          <button class="tab" th:classappend="${currentFilter == 'CANCELLED' ? 'active' : ''}" onclick="filterTab(this,'CANCELLED')" style="padding: 15px 20px; font-weight: 600;">Đã hủy</button>
+        </div>
+        
+        <div class="date-filter-row" style="padding: 10px 16px; display: flex; gap: 8px; align-items: center; overflow-x: auto;">
+          <input type="date" id="startDate" class="form-input" th:value="${startDate}" style="font-size: 0.75rem; padding: 6px;">
+          <span class="text-xs text-muted">đến</span>
+          <input type="date" id="endDate" class="form-input" th:value="${endDate}" style="font-size: 0.75rem; padding: 6px;">
+          <button onclick="applyFilters()" class="btn btn-primary btn-sm" style="white-space: nowrap; padding: 6px 12px;">Lọc</button>
+          <button onclick="resetFilters()" class="btn btn-outline btn-sm" style="white-space: nowrap; padding: 6px 12px;">Xóa</button>
+        </div>
+        
+        <div class="section" id="ordersList" style="padding-top:0">
+          <div th:if="${orders == null || orders.isEmpty()}" class="empty-state">
+            <i class="fas fa-box-open"></i>
+            <h3>Chưa có đơn hàng</h3>
+            <a th:href="@{/products}" class="btn btn-primary btn-sm mt-12">Mua sắm ngay</a>
+          </div>
+          
+          <div th:if="${orders != null and !orders.isEmpty()}">
+            <div th:each="o : ${orders}" class="cart-card" th:onclick="'window.location.href=\'' + @{/orders/{id}(id=${o.orderId})} + '\''" 
+                 style="cursor:pointer; margin-bottom: 15px; border-left: 5px solid;"
+                 th:styleappend="${o.status == 'PENDING' ? 'border-color: #ff9800;' : (o.status == 'CONFIRMED' ? 'border-color: #2196f3;' : (o.status == 'SHIPPING' ? 'border-color: #9c27b0;' : (o.status == 'DELIVERED' ? 'border-color: #4caf50;' : 'border-color: #f44336;')))}"
+                 th:attr="data-status=${o.status}, data-date=${#temporals.format(o.createdAt, 'yyyy-MM-dd')}">
+              
+              <div class="flex justify-between items-center mb-15" style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <span style="font-weight: 800; color: var(--navy-primary);" th:text="'MÃ ĐƠN: #' + (${o.orderCode != null ? o.orderCode : o.orderId})">#1</span>
+                <span class="order-status" 
+                      th:classappend="${o.status == 'PENDING' ? 'status-pending' : (o.status == 'CONFIRMED' ? 'status-confirmed' : (o.status == 'SHIPPING' ? 'status-shipping' : (o.status == 'DELIVERED' ? 'status-delivered' : 'status-cancelled')))}"
+                      th:text="${o.status == 'PENDING' ? 'CHỜ XỬ LÝ' : (o.status == 'CONFIRMED' ? 'ĐÃ XÁC NHẬN' : (o.status == 'SHIPPING' ? 'ĐANG GIAO' : (o.status == 'DELIVERED' ? 'ĐÃ GIAO' : 'ĐÃ HỦY')))}">
+                </span>
+              </div>
+              
+              <div class="flex-col gap-8">
+                <div th:each="i, stat : ${o.items}" th:if="${stat.index < 2}" style="font-size: 0.9rem; color: var(--text-main);">
+                   <i class="fas fa-caret-right" style="color: var(--accent-gold); margin-right: 8px;"></i>
+                   <span th:text="${i.productName}" style="font-weight: 500;"></span> 
+                   <span style="color: var(--text-muted); margin-left: 5px;" th:text="'x' + ${i.quantity}"></span>
+                </div>
+                <div th:if="${o.items != null and o.items.size() > 2}" style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-left: 20px;">
+                   ... và <span th:text="${o.items.size() - 2}"></span> sản phẩm khác
+                </div>
+              </div>
+              
+              <div class="flex justify-between items-center mt-15 pt-15" style="border-top: 1px dashed var(--border-color);">
+                <div class="text-xs text-muted">
+                  <i class="far fa-calendar-alt"></i> <span th:text="${#temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm')}"></span>
+                </div>
+                <div>
+                  <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 10px;">Tổng tiền:</span>
+                  <span class="product-price" style="font-size: 1.1rem; color: var(--accent-gold);" th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="pagination" class="pagination-container"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item active"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script>
+    const ITEMS_PER_PAGE = 5;
+    let currentPage = 1;
+
+    function filterTab(el, status) {
+      const url = new URL(window.location.href);
+      if (status) url.searchParams.set('status', status);
+      else url.searchParams.delete('status');
+      window.location.href = url.toString();
+    }
+
+    function applyFilters() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const url = new URL(window.location.href);
+      
+      if (start) url.searchParams.set('startDate', start);
+      else url.searchParams.delete('startDate');
+      
+      if (end) url.searchParams.set('endDate', end);
+      else url.searchParams.delete('endDate');
+      
+      window.location.href = url.toString();
+    }
+
+    function resetFilters() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('startDate');
+      url.searchParams.delete('endDate');
+      url.searchParams.delete('status');
+      window.location.href = url.origin + url.pathname;
+    }
+
+    function initPagination() {
+      const cards = Array.from(document.querySelectorAll('.order-card'));
+      if (cards.length === 0) return;
+
+      const totalPages = Math.ceil(cards.length / ITEMS_PER_PAGE);
+      const container = document.getElementById('pagination');
+
+      function showPage(page) {
+        currentPage = page;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+
+        cards.forEach((card, idx) => {
+          card.style.display = (idx >= start && idx < end) ? 'block' : 'none';
+        });
+
+        renderControls();
+      }
+
+      function renderControls() {
+        container.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+          const btn = document.createElement('button');
+          btn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+          btn.innerText = i;
+          btn.onclick = () => { showPage(i); window.scrollTo({top:0, behavior:'smooth'}); };
+          container.appendChild(btn);
+        }
+      }
+
+      showPage(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', initPagination);
+  </script>
+</body>
+</html>

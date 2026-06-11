@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Phương thức thanh toán — PhoneShop</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .payment-section{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+    .payment-method{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--border-light);border-radius:var(--radius-md);cursor:pointer;transition:all var(--transition);margin-bottom:8px}
+    .payment-method:hover{border-color:var(--accent);background:var(--accent-light)}
+    .payment-method.selected{border-color:var(--accent);background:var(--accent-light)}
+    .payment-method input[type=radio]{accent-color:var(--accent);width:18px;height:18px}
+    .payment-icon{font-size:1.75rem;width:48px;text-align:center}
+    .payment-info{flex:1}
+    .payment-name{font-weight:600;font-size:0.9375rem}
+    .payment-desc{font-size:0.8125rem;color:var(--text-muted);margin-top:2px}
+    .order-summary{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+    .summary-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light);font-size:0.8125rem}
+    .summary-item:last-child{border-bottom:none}
+    .summary-row{display:flex;justify-content:space-between;padding:10px 0;font-weight:600}
+    @media(min-width:768px){
+      .payment-layout{display:flex;gap:24px;max-width:900px;margin:0 auto;padding:16px 32px}
+      .payment-form{flex:2}
+      .payment-summary{flex:1}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <h3>Thanh toán</h3>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="steps">
+      <div class="step done"><div class="step-circle"><i class="fas fa-check" style="font-size:0.6rem"></i></div></div>
+      <div class="step-line" style="background:var(--accent)"></div>
+      <div class="step done"><div class="step-circle"><i class="fas fa-check" style="font-size:0.6rem"></i></div></div>
+      <div class="step-line" style="background:var(--accent)"></div>
+      <div class="step active"><div class="step-circle">3</div></div>
+    </div>
+    <div class="flex justify-center gap-24 mb-16" style="margin-top:-4px">
+      <span class="text-xs text-muted">Giỏ hàng</span>
+      <span class="text-xs text-muted">Thanh toán</span>
+      <span class="text-xs fw-600 text-accent">Phương thức</span>
+    </div>
+
+    <form id="paymentForm" class="payment-layout" style="padding:0 16px">
+      <div class="payment-form">
+        <div class="payment-section">
+          <h4><i class="fas fa-wallet" style="color:var(--accent)"></i> Chọn phương thức thanh toán</h4>
+          <div style="margin-top:12px">
+            <label class="payment-method selected" onclick="selectPayment(this,'vnpay')">
+              <input type="radio" name="paymentMethod" value="vnpay" checked style="display:none">
+              <div class="payment-icon" style="color:var(--accent)"><i class="fas fa-credit-card"></i></div>
+              <div class="payment-info">
+                <div class="payment-name">VNPAY</div>
+                <div class="payment-desc">Thanh toán qua cổng VNPay - Hỗ trợ ATM, Credit Card</div>
+              </div>
+              <i class="fas fa-check-circle" style="color:var(--accent);font-size:1.25rem"></i>
+            </label>
+
+            <label class="payment-method" onclick="selectPayment(this,'momo')">
+              <input type="radio" name="paymentMethod" value="momo" style="display:none">
+              <div class="payment-icon" style="color:#a4173e"><i class="fab fa-square"></i></div>
+              <div class="payment-info">
+                <div class="payment-name">Momo</div>
+                <div class="payment-desc">Ví điện tử Momo - Nhanh chóng an toàn</div>
+              </div>
+            </label>
+
+            <label class="payment-method" onclick="selectPayment(this,'ghn')">
+              <input type="radio" name="paymentMethod" value="ghn" style="display:none">
+              <div class="payment-icon" style="color:#ff6b00"><i class="fas fa-truck"></i></div>
+              <div class="payment-info">
+                <div class="payment-name">GHN</div>
+                <div class="payment-desc">Thanh toán qua shipper GHN</div>
+              </div>
+            </label>
+
+            <label class="payment-method" onclick="selectPayment(this,'cod')">
+              <input type="radio" name="paymentMethod" value="cod" style="display:none">
+              <div class="payment-icon" style="color:#ff9500"><i class="fas fa-hand-holding-usd"></i></div>
+              <div class="payment-info">
+                <div class="payment-name">Thanh toán khi nhận hàng (COD)</div>
+                <div class="payment-desc">Thanh toán tiền mặt cho shipper khi nhận hàng</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="payment-section">
+          <h4><i class="fas fa-info-circle" style="color:var(--accent)"></i> Quy trình thanh toán</h4>
+          <ol style="padding-left:20px;font-size:0.8125rem;color:var(--text-secondary);line-height:1.8">
+            <li>Xác nhận thông tin đơn hàng</li>
+            <li>Chọn phương thức thanh toán và hoàn tất</li>
+            <li>Được chuyển hướng sang cổng thanh toán (nếu cần)</li>
+            <li>Đơn hàng sẽ được xác nhận ngay sau thanh toán thành công</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="payment-summary-col" style="margin:0 16px">
+        <div class="order-summary" style="position:sticky;top:80px">
+          <h4>Tóm tắt đơn hàng</h4>
+          <div id="orderItems"><div class="spinner"></div></div>
+          <div style="border-top:1px solid var(--border-light);margin:12px 0"></div>
+          <div class="summary-item">
+            <span>Tạm tính</span>
+            <span id="sumSubtotal">0₫</span>
+          </div>
+          <div class="summary-item">
+            <span>Phí vận chuyển</span>
+            <span id="sumShipping">0₫</span>
+          </div>
+          <div style="border-top:1px solid var(--border-light);margin:12px 0"></div>
+          <div class="summary-row" style="font-size:1.125rem;color:var(--danger)">
+            <span>Tổng cộng</span>
+            <span id="sumTotal">0₫</span>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg mt-16" id="confirmBtn">
+            <i class="fas fa-check"></i> Xác nhận thanh toán
+          </button>
+          <a href="javascript:history.back()" class="btn btn-outline btn-block mt-8" style="font-size:0.8125rem"><i class="fas fa-arrow-left"></i> Quay lại</a>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a href="products.html" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a href="cart.html" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a href="orders.html" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a href="profile.html" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', loadPaymentInfo);
+
+    async function loadPaymentInfo() {
+      try {
+        const res = await api.get('/api/orders/checkout-info');
+        if (res.status === 200 && res.data) {
+          const d = res.data;
+          if (d.cart && d.cart.items) renderOrderSummary(d.cart.items);
+        }
+      } catch {
+        showToast('Lỗi tải thông tin đơn hàng', 'error');
+      }
+    }
+
+    function renderOrderSummary(items) {
+      const c = document.getElementById('orderItems');
+      let subtotal = 0;
+      c.innerHTML = items.map(i => {
+        subtotal += (i.unitPrice || i.price || 0) * i.quantity;
+        return `<div class="summary-item">
+          <span>${i.productName || 'SP'} x${i.quantity}</span>
+          <span>${fmt((i.unitPrice || i.price) * i.quantity)}</span>
+        </div>`;
+      }).join('');
+      document.getElementById('sumSubtotal').textContent = fmt(subtotal);
+      document.getElementById('sumTotal').textContent = fmt(subtotal);
+    }
+
+    function selectPayment(el, method) {
+      document.querySelectorAll('.payment-method').forEach(m => {
+        m.classList.remove('selected');
+        m.querySelector('input[type=radio]').checked = false;
+      });
+      el.classList.add('selected');
+      el.querySelector('input[type=radio]').checked = true;
+    }
+
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('confirmBtn');
+      const method = document.querySelector('input[name=paymentMethod]:checked').value;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px"></div>';
+      
+      try {
+        const paymentId = getParam('paymentId');
+        if (method === 'vnpay') {
+          if (!paymentId) {
+            navigate('checkout.html');
+            return;
+          }
+          const res = await api.get(`/api/payments/${paymentId}/vnpay-url`);
+          if (res.status === 200 && res.data && res.data.paymentUrl) {
+            if (res.data.paymentUrl.includes('/vnpay/mock')) {
+              navigate('payment-mock.html', { paymentId });
+            } else {
+              window.location.href = res.data.paymentUrl;
+            }
+          } else {
+            showToast('Lỗi kết nối VNPay', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận thanh toán';
+          }
+        } else if (method === 'momo') {
+          showToast('Tính năng Momo đang cập nhật', 'info');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận thanh toán';
+        } else if (method === 'cod') {
+          navigate('checkout.html');
+        } else {
+          showToast('Phương thức thanh toán không được hỗ trợ', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận thanh toán';
+        }
+      } catch {
+        showToast('Lỗi kết nối', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Xác nhận thanh toán';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>BI Dashboard — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    .bi-report{display:flex;flex-direction:column;gap:18px}
+    .bi-topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .bi-title h1{color:var(--navy-primary);font-weight:800;margin-bottom:6px}
+    .bi-title p{color:var(--text-muted);font-size:.92rem}
+    .bi-filter-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--white);border:1px solid var(--border-color);border-radius:8px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+    .bi-filter-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .bi-filter-group .form-input{width:auto;min-width:150px;border-radius:6px;padding:10px 12px}
+    .bi-period{display:inline-flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--border-color);border-radius:6px;padding:10px 12px;background:#fbfcfd;color:var(--navy-primary);font-weight:800}
+    .bi-status{font-size:.76rem;color:var(--text-muted);font-weight:700}
+    .bi-alert{background:#fff9db;border:1px solid #ffe066;color:#8a5a00;border-radius:8px;padding:14px 16px;font-weight:700}
+    .bi-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+    .bi-tab{border:1px solid var(--border-color);background:var(--white);color:var(--navy-primary);border-radius:6px;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
+    .bi-tab.active{background:var(--navy-primary);color:var(--white);border-color:var(--navy-primary)}
+    .bi-page{display:none;flex-direction:column;gap:18px}
+    .bi-page.active{display:flex}
+    .bi-kpi-strip{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:12px}
+    .bi-kpi{background:var(--white);border:1px solid var(--border-color);border-radius:8px;padding:14px;box-shadow:var(--shadow-sm);min-height:106px}
+    .bi-kpi dt{font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:800;margin-bottom:8px}
+    .bi-kpi dd{font-size:1.1rem;color:var(--navy-primary);font-weight:800;line-height:1.2;word-break:break-word}
+    .bi-kpi small{display:block;color:var(--text-muted);font-size:.72rem;margin-top:7px}
+    .bi-kpi.good{border-top:4px solid #198754}
+    .bi-kpi.warn{border-top:4px solid #f08c00}
+    .bi-kpi.danger{border-top:4px solid #e03131}
+    .bi-kpi.info{border-top:4px solid #0b67b2}
+    .bi-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .bi-card{background:var(--white);border:1px solid var(--border-color);border-radius:8px;padding:16px;box-shadow:var(--shadow-sm);min-width:0}
+    .bi-card.span-3{grid-column:span 3}
+    .bi-card.span-4{grid-column:span 4}
+    .bi-card.span-5{grid-column:span 5}
+    .bi-card.span-6{grid-column:span 6}
+    .bi-card.span-7{grid-column:span 7}
+    .bi-card.span-8{grid-column:span 8}
+    .bi-card.span-12{grid-column:1 / -1}
+    .bi-card h4{display:flex;align-items:center;gap:9px;color:var(--navy-primary);font-weight:800;margin-bottom:12px}
+    .bi-card h4 i{color:var(--accent-gold)}
+    .bi-chart{height:300px;position:relative}
+    .bi-chart.short{height:230px}
+    .bi-question{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .bi-question-card{border:1px solid var(--border-color);border-radius:8px;padding:14px;background:#fbfcfd}
+    .bi-question-card strong{display:block;color:var(--navy-primary);font-size:.9rem;margin-bottom:6px}
+    .bi-question-card span{color:var(--text-muted);font-size:.82rem}
+    .bi-table-wrap{overflow-x:auto;border:1px solid var(--border-color);border-radius:8px}
+    .bi-table{width:100%;border-collapse:collapse;min-width:860px}
+    .bi-table th,.bi-table td{padding:11px 10px;border-bottom:1px solid var(--border-color);text-align:left;font-size:.85rem;vertical-align:middle}
+    .bi-table th{background:var(--bg-light);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)}
+    .bi-table tr:last-child td{border-bottom:none}
+    .bi-table td:last-child,.bi-table th:last-child{text-align:right}
+    .bi-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;background:#eef6ff;color:#0b67b2;white-space:nowrap}
+    .bi-pill.warn{background:#fff4e6;color:#e8590c}
+    .bi-pill.danger{background:#fff5f5;color:#e03131}
+    .bi-empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);font-size:.9rem;padding:24px}
+    @media(max-width:1250px){.bi-kpi-strip{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}.bi-card.span-3,.bi-card.span-4,.bi-card.span-5,.bi-card.span-6,.bi-card.span-7,.bi-card.span-8{grid-column:1 / -1}}
+    @media(max-width:640px){.bi-filter-group,.bi-filter-group .form-input,.bi-filter-group .btn,.bi-period{width:100%}.bi-chart{height:260px}.admin-main{padding-left:14px;padding-right:14px}}
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color:var(--white);background:var(--accent-gold);padding:4px 12px;border-radius:50px;">BI DASHBOARD</span>
+  </header>
+
+  <div class="admin-layout">
+        <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item active"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <section class="bi-report">
+        <div class="bi-topbar">
+          <div class="bi-title">
+            <h1>PhoneShop BI Dashboard</h1>
+            <p>Tổng quan kinh doanh từ Data Warehouse: bán hàng, tồn kho, thanh toán, khách hàng và CSKH.</p>
+          </div>
+          <button class="btn btn-outline" onclick="syncDwh(this)" style="border-radius: 50px; padding: 10px 20px; font-weight: 700; background: var(--white); color: var(--navy-primary); border: 2px solid var(--navy-primary); cursor: pointer;">
+            <i class="fas fa-sync-alt"></i> ĐỒNG BỘ DỮ LIỆU DWH
+          </button>
+        </div>
+
+        <form class="bi-filter-bar" th:action="@{/admin/analytics}" method="get">
+          <div class="bi-filter-group" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <select class="form-input" name="grain" style="min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; background-color: white;">
+              <option value="day" th:selected="${dashboard.grain == 'day'}">Theo ngày</option>
+              <option value="week" th:selected="${dashboard.grain == 'week'}">Theo tuần</option>
+              <option value="month" th:selected="${dashboard.grain == 'month'}">Theo tháng</option>
+            </select>
+            
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 600; color: var(--navy-primary); font-size: 14px;">Từ:</span>
+              <input type="date" class="form-input" name="startDate" th:value="${dashboard.startDate}" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; font-family: inherit; font-size: 14px;">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 600; color: var(--navy-primary); font-size: 14px;">Đến:</span>
+              <input type="date" class="form-input" name="endDate" th:value="${dashboard.endDate}" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; font-family: inherit; font-size: 14px;">
+            </div>
+
+            <button class="btn btn-primary" type="submit" style="padding: 8px 16px; border-radius: 6px; background-color: var(--navy-primary); color: white; border: none; cursor: pointer;"><i class="fas fa-filter"></i> Lọc</button>
+            <span class="bi-period" style="margin-left: 10px;"><i class="fas fa-calendar-days"></i> <span th:text="${dashboard.periodLabel}">Theo ngày: hôm nay</span></span>
+          </div>
+          <span class="bi-status" th:text="${dashboard.message}">Dữ liệu lấy từ DWH</span>
+        </form>
+
+        <div class="bi-alert" th:if="${!dashboard.available}">
+          <i class="fas fa-circle-info"></i>
+          <span th:text="${dashboard.message}">Chưa đọc được DWH.</span>
+        </div>
+
+        <nav class="bi-tabs" aria-label="BI report pages">
+          <button class="bi-tab active" type="button" data-page="overview"><i class="fas fa-gauge-high"></i> Tổng quan</button>
+          <button class="bi-tab" type="button" data-page="sales"><i class="fas fa-chart-column"></i> Bán hàng</button>
+          <button class="bi-tab" type="button" data-page="inventory"><i class="fas fa-warehouse"></i> Tồn kho</button>
+          <button class="bi-tab" type="button" data-page="payments"><i class="fas fa-credit-card"></i> Thanh toán</button>
+          <button class="bi-tab" type="button" data-page="reconciliation"><i class="fas fa-file-invoice-dollar"></i> Đối soát tài chính</button>
+          <button class="bi-tab" type="button" data-page="customers"><i class="fas fa-users"></i> Khách hàng</button>
+          <button class="bi-tab" type="button" data-page="support"><i class="fas fa-headset"></i> CSKH</button>
+        </nav>
+
+        <section id="page-overview" class="bi-page active">
+          <div class="bi-kpi-strip">
+            <dl class="bi-kpi info"><dt>Doanh thu</dt><dd th:text="${#numbers.formatDecimal(dashboard.summary.totalRevenue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</dd><small>Tổng giá bán</small></dl>
+            <dl class="bi-kpi good"><dt>Lợi nhuận ròng</dt><dd th:text="${#numbers.formatDecimal(dashboard.summary.netProfit,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</dd><small th:text="${dashboard.summary.netMarginRate} + '% net margin'">0%</small></dl>
+            <dl class="bi-kpi"><dt>Biên LN gộp</dt><dd th:text="${dashboard.summary.grossMarginRate} + '%'">0%</dd><small>Gross profit / revenue</small></dl>
+            <dl class="bi-kpi info"><dt>Số lượng bán</dt><dd th:text="${dashboard.summary.unitsSold}">0</dd><small>Units sold</small></dl>
+            <dl class="bi-kpi warn"><dt>Giá trị tồn kho</dt><dd th:text="${#numbers.formatDecimal(dashboard.summary.inventoryValue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</dd><small th:text="${dashboard.summary.inventoryQuantity} + ' sản phẩm'">0 sản phẩm</small></dl>
+            <dl class="bi-kpi danger"><dt>Bán chậm</dt><dd th:text="${dashboard.summary.slowMovingProducts}">0</dd><small>Sản phẩm kẹt vốn</small></dl>
+            <dl class="bi-kpi"><dt>Rating TB</dt><dd th:text="${dashboard.summary.averageRating}">0</dd><small th:text="${dashboard.summary.verifiedReviewRate} + '% verified'">0%</small></dl>
+          </div>
+
+          <div class="bi-grid">
+            <div class="bi-card span-8">
+              <h4><i class="fas fa-chart-line"></i> Doanh thu và lợi nhuận theo thời gian</h4>
+              <div class="bi-chart"><canvas id="overviewTrendChart"></canvas></div>
+            </div>
+            <div class="bi-card span-4">
+              <h4><i class="fas fa-circle-nodes"></i> Câu hỏi quản trị</h4>
+              <div class="bi-question">
+                <div class="bi-question-card"><strong>Kinh doanh có tốt không?</strong><span>Nhìn doanh thu, lợi nhuận, margin và units sold.</span></div>
+                <div class="bi-question-card"><strong>Bán gì đang thắng?</strong><span>Top sản phẩm, brand, category và segment khách hàng.</span></div>
+                <div class="bi-question-card"><strong>Vốn có bị kẹt không?</strong><span>Theo dõi tồn kho, bán chậm và tồn thấp.</span></div>
+                <div class="bi-question-card"><strong>Tiền có khớp không?</strong><span>Đối soát matched, mismatch, failed và tiền thực nhận.</span></div>
+              </div>
+            </div>
+            <div class="bi-card span-4"><h4><i class="fas fa-building"></i> Doanh thu theo brand</h4><div class="bi-chart short"><canvas id="overviewBrandChart"></canvas></div></div>
+            <div class="bi-card span-4"><h4><i class="fas fa-layer-group"></i> Doanh thu theo category</h4><div class="bi-chart short"><canvas id="overviewCategoryChart"></canvas></div></div>
+            <div class="bi-card span-4"><h4><i class="fas fa-credit-card"></i> Đối soát thanh toán</h4><div class="bi-chart short"><canvas id="overviewPaymentChart"></canvas></div></div>
+            <div class="bi-card span-12">
+              <h4><i class="fas fa-hourglass-end"></i> Sản phẩm bán chậm / kẹt vốn</h4>
+              <div class="bi-table-wrap">
+                <table class="bi-table">
+                  <thead><tr><th>Sản phẩm</th><th>Brand</th><th>Nhóm</th><th>Tồn kho</th><th>Bán trong kỳ</th><th>Giá trị tồn</th><th>Score</th><th>Gợi ý</th></tr></thead>
+                  <tbody>
+                    <tr th:if="${dashboard.slowMovingProducts.isEmpty()}"><td colspan="8" class="text-center text-muted">Không có sản phẩm tồn kho bán chậm trong kỳ này.</td></tr>
+                    <tr th:each="p : ${dashboard.slowMovingProducts}">
+                      <td class="fw-700" th:text="${p.productName}">Sản phẩm</td>
+                      <td th:text="${p.brand}">Brand</td>
+                      <td th:text="${p.categoryName}">Category</td>
+                      <td><span class="bi-pill warn" th:text="${p.quantityOnHand}">0</span></td>
+                      <td th:text="${p.unitsSold}">0</td>
+                      <td th:text="${#numbers.formatDecimal(p.inventoryValue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td th:text="${p.slowMovingScore}">0</td>
+                      <td><span class="bi-pill danger" th:text="${p.suggestedAction}">Theo dõi</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-sales" class="bi-page">
+          <div class="bi-grid">
+            <div class="bi-card span-7"><h4><i class="fas fa-chart-line"></i> Sales trend</h4><div class="bi-chart"><canvas id="salesTrendChart"></canvas></div></div>
+            <div class="bi-card span-5"><h4><i class="fas fa-trophy"></i> Top sản phẩm theo doanh thu</h4><div class="bi-chart"><canvas id="topProductsChart"></canvas></div></div>
+            <div class="bi-card span-6"><h4><i class="fas fa-building"></i> Brand nào đóng góp nhiều nhất?</h4><div class="bi-chart"><canvas id="brandChart"></canvas></div></div>
+            <div class="bi-card span-6"><h4><i class="fas fa-tags"></i> Category nào bán tốt nhất?</h4><div class="bi-chart"><canvas id="categoryChart"></canvas></div></div>
+            <div class="bi-card span-12">
+              <h4><i class="fas fa-ranking-star"></i> Bảng top sản phẩm</h4>
+              <div class="bi-table-wrap">
+                <table class="bi-table">
+                  <thead><tr><th>Sản phẩm</th><th>Brand</th><th>Category</th><th>SL bán</th><th>Doanh thu</th><th>Lợi nhuận ròng</th></tr></thead>
+                  <tbody>
+                    <tr th:if="${dashboard.topProducts.isEmpty()}"><td colspan="6" class="text-center text-muted">Chưa có dữ liệu bán hàng.</td></tr>
+                    <tr th:each="p : ${dashboard.topProducts}">
+                      <td class="fw-700" th:text="${p.productName}">Sản phẩm</td>
+                      <td th:text="${p.brand}">Brand</td>
+                      <td th:text="${p.categoryName}">Category</td>
+                      <td><span class="bi-pill" th:text="${p.unitsSold}">0</span></td>
+                      <td th:text="${#numbers.formatDecimal(p.totalRevenue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td th:text="${#numbers.formatDecimal(p.netProfit,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-inventory" class="bi-page">
+          <div class="bi-kpi-strip">
+            <dl class="bi-kpi warn"><dt>Giá trị tồn kho</dt><dd th:text="${#numbers.formatDecimal(dashboard.summary.inventoryValue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</dd><small>Vốn nằm trong kho</small></dl>
+            <dl class="bi-kpi info"><dt>Số lượng tồn</dt><dd th:text="${dashboard.summary.inventoryQuantity}">0</dd><small>Snapshot mới nhất trong kỳ</small></dl>
+            <dl class="bi-kpi danger"><dt>Tồn thấp</dt><dd th:text="${dashboard.summary.lowStockProducts}">0</dd><small>Cần xem nhập hàng</small></dl>
+            <dl class="bi-kpi danger"><dt>Bán chậm</dt><dd th:text="${dashboard.summary.slowMovingProducts}">0</dd><small>Cần đẩy bán</small></dl>
+          </div>
+          <div class="bi-grid">
+            <div class="bi-card span-5"><h4><i class="fas fa-boxes-stacked"></i> Giá trị tồn kho theo nhóm hàng</h4><div class="bi-chart"><canvas id="inventoryChart"></canvas></div></div>
+            <div class="bi-card span-7">
+              <h4><i class="fas fa-hourglass-end"></i> Sản phẩm bán chậm / kẹt vốn</h4>
+              <div class="bi-table-wrap">
+                <table class="bi-table">
+                  <thead><tr><th>Sản phẩm</th><th>Brand</th><th>Nhóm</th><th>Tồn</th><th>Bán trong kỳ</th><th>Giá trị tồn</th><th>Score</th><th>Gợi ý</th></tr></thead>
+                  <tbody>
+                    <tr th:if="${dashboard.slowMovingProducts.isEmpty()}"><td colspan="8" class="text-center text-muted">Chưa có sản phẩm bán chậm trong kỳ.</td></tr>
+                    <tr th:each="p : ${dashboard.slowMovingProducts}">
+                      <td class="fw-700" th:text="${p.productName}">Sản phẩm</td>
+                      <td th:text="${p.brand}">Brand</td>
+                      <td th:text="${p.categoryName}">Category</td>
+                      <td><span class="bi-pill warn" th:text="${p.quantityOnHand}">0</span></td>
+                      <td th:text="${p.unitsSold}">0</td>
+                      <td th:text="${#numbers.formatDecimal(p.inventoryValue,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td th:text="${p.slowMovingScore}">0</td>
+                      <td><span class="bi-pill danger" th:text="${p.suggestedAction}">Theo dõi</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-payments" class="bi-page">
+          <div class="bi-kpi-strip">
+            <dl class="bi-kpi info"><dt>Đơn thanh toán</dt><dd th:text="${dashboard.summary.orderCount}">0</dd><small>Distinct order_id</small></dl>
+            <dl class="bi-kpi good"><dt>Tiền thực nhận</dt><dd th:text="${#numbers.formatDecimal(dashboard.summary.netReceived,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</dd><small>Amount - gateway fee</small></dl>
+            <dl class="bi-kpi"><dt>Tỷ lệ khớp</dt><dd th:text="${dashboard.summary.paymentMatchRate} + '%'">0%</dd><small>Matched / total payments</small></dl>
+          </div>
+          <div class="bi-grid">
+            <div class="bi-card span-5"><h4><i class="fas fa-credit-card"></i> Trạng thái đối soát</h4><div class="bi-chart"><canvas id="paymentChart"></canvas></div></div>
+            <div class="bi-card span-7"><h4><i class="fas fa-circle-info"></i> Cách đọc</h4><div class="bi-question"><div class="bi-question-card"><strong>MATCHED</strong><span>Tiền ghi nhận và statement khớp.</span></div><div class="bi-question-card"><strong>MISMATCH</strong><span>Cần kiểm tra lệch số tiền hoặc mã giao dịch.</span></div><div class="bi-question-card"><strong>FAILED</strong><span>Giao dịch không thành công, không nên tính là tiền thực nhận.</span></div></div></div>
+          </div>
+        </section>
+
+        <section id="page-reconciliation" class="bi-page">
+          <div class="bi-grid">
+            <div class="bi-card span-12">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin-bottom: 0;"><i class="fas fa-file-invoice-dollar"></i> Bảng kiểm soát giao dịch lỗi & lệch số tiền</h4>
+                <a th:href="@{/admin/analytics/export-mismatched(grain=${dashboard.grain}, startDate=${dashboard.startDate}, endDate=${dashboard.endDate})}" class="btn btn-sm btn-outline" style="border: 1px solid #198754; color: #198754; background: white; border-radius: 4px; padding: 6px 12px; cursor: pointer; text-decoration: none; font-weight: 700;"><i class="fas fa-file-excel"></i> Xuất Excel</a>
+              </div>
+              <div class="bi-table-wrap">
+                <table class="bi-table">
+                  <thead><tr><th>Thời gian</th><th>Mã ĐH</th><th>Khách hàng</th><th>Đơn hàng</th><th>Phí cổng</th><th>Thực nhận</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                  <tbody>
+                    <tr th:if="${dashboard.mismatchedPayments.isEmpty()}"><td colspan="8" class="text-center text-muted">Không có giao dịch lỗi hoặc lệch tiền trong kỳ này.</td></tr>
+                    <tr th:each="m : ${dashboard.mismatchedPayments}">
+                      <td class="fw-700" th:text="${#temporals.format(m.paymentTime, 'HH:mm dd/MM/yyyy')}">12:00 01/01/2026</td>
+                      <td><a th:href="@{/admin/orders/{id}(id=${m.orderId})}" th:text="'#' + ${m.orderId}" style="color: var(--navy-primary); font-weight: 700; text-decoration: none;">#123</a></td>
+                      <td th:text="${m.customerName}">Tên Khách Hàng</td>
+                      <td th:text="${#numbers.formatDecimal(m.amount,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td th:text="${#numbers.formatDecimal(m.gatewayFee,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td th:text="${#numbers.formatDecimal(m.netReceived,0,'COMMA',0,'POINT')} + ' ₫'">0 ₫</td>
+                      <td><span class="bi-pill danger" th:text="${m.reconciliationStatus}">AMOUNT_MISMATCH</span></td>
+                      <td>
+                        <button class="btn btn-sm btn-outline" style="border: 1px solid var(--border-color); background: white; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem;"><i class="fas fa-eye"></i> Xem hóa đơn</button>
+                        <button class="btn btn-sm btn-outline" style="border: 1px solid #e03131; color: #e03131; background: #fff5f5; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem;"><i class="fas fa-envelope"></i> Báo lỗi VNPAY</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-customers" class="bi-page">
+          <div class="bi-grid">
+            <div class="bi-card span-6"><h4><i class="fas fa-users"></i> Doanh thu theo phân khúc khách hàng</h4><div class="bi-chart"><canvas id="segmentChart"></canvas></div></div>
+            <div class="bi-card span-6"><h4><i class="fas fa-mobile-screen"></i> Hành vi mua theo thời gian</h4><div class="bi-chart"><canvas id="unitsTrendChart"></canvas></div></div>
+          </div>
+        </section>
+
+        <section id="page-support" class="bi-page">
+          <div class="bi-kpi-strip">
+            <dl class="bi-kpi"><dt>Rating trung bình</dt><dd th:text="${dashboard.summary.averageRating}">0</dd><small>Average rating</small></dl>
+            <dl class="bi-kpi good"><dt>Review verified</dt><dd th:text="${dashboard.summary.verifiedReviewRate} + '%'">0%</dd><small>Độ tin cậy review</small></dl>
+          </div>
+          <div class="bi-grid">
+            <div class="bi-card span-5"><h4><i class="fas fa-star-half-stroke"></i> Phân bố rating</h4><div class="bi-chart"><canvas id="ratingChart"></canvas></div></div>
+            <div class="bi-card span-7">
+              <h4><i class="fas fa-triangle-exclamation"></i> Sản phẩm rating thấp cần CSKH</h4>
+              <div class="bi-table-wrap">
+                <table class="bi-table">
+                  <thead><tr><th>Sản phẩm</th><th>Brand</th><th>Số review</th><th>Rating TB</th></tr></thead>
+                  <tbody>
+                    <tr th:if="${dashboard.reviewWarnings.isEmpty()}"><td colspan="4" class="text-center text-muted">Không có sản phẩm rating thấp trong kỳ.</td></tr>
+                    <tr th:each="r : ${dashboard.reviewWarnings}">
+                      <td class="fw-700" th:text="${r.productName}">Sản phẩm</td>
+                      <td th:text="${r.brand}">Brand</td>
+                      <td th:text="${r.reviewCount}">0</td>
+                      <td><span class="bi-pill danger" th:text="${r.averageRating}">0</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script th:inline="javascript">
+    const dashboard = {
+      salesTrend: /*[[${dashboard.salesTrend}]]*/ [],
+      topProducts: /*[[${dashboard.topProducts}]]*/ [],
+      revenueByBrand: /*[[${dashboard.revenueByBrand}]]*/ [],
+      revenueByCategory: /*[[${dashboard.revenueByCategory}]]*/ [],
+      revenueByCustomerSegment: /*[[${dashboard.revenueByCustomerSegment}]]*/ [],
+      inventoryByCategory: /*[[${dashboard.inventoryByCategory}]]*/ [],
+      paymentReconciliation: /*[[${dashboard.paymentReconciliation}]]*/ [],
+      ratingDistribution: /*[[${dashboard.ratingDistribution}]]*/ []
+    };
+  </script>
+  <script>
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    document.querySelectorAll('.bi-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.bi-tab').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.bi-page').forEach(page => page.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('page-' + tab.dataset.page).classList.add('active');
+      });
+    });
+
+    const palette = ['#002347', '#c5a059', '#198754', '#0b67b2', '#f08c00', '#e03131', '#6741d9', '#495057'];
+    const money = value => new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + ' ₫';
+    const hasRows = rows => Array.isArray(rows) && rows.length > 0;
+
+    function emptyChart(canvasId, text) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      canvas.parentElement.innerHTML = '<div class="bi-empty">' + text + '</div>';
+    }
+
+    function lineChart(canvasId, rows, config) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      if (!hasRows(rows)) return emptyChart(canvasId, 'Chưa có dữ liệu cho biểu đồ này.');
+      new Chart(canvas, {
+        type: 'line',
+        data: { labels: rows.map(p => p.label), datasets: config.datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.money ? ctx.dataset.label + ': ' + money(ctx.raw) : ctx.dataset.label + ': ' + ctx.raw } } },
+          scales: { y: { beginAtZero: true, ticks: { callback: v => config.moneyAxis && Number(v) >= 1000000 ? (Number(v) / 1000000).toFixed(1) + 'M' : v } } }
+        }
+      });
+    }
+
+    function barChart(canvasId, rows, label, valueKey, horizontal, asMoney) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      if (!hasRows(rows)) return emptyChart(canvasId, 'Chưa có dữ liệu cho biểu đồ này.');
+      new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: rows.map(p => (p.label || p.productName || '').slice(0, 28)),
+          datasets: [{ label, data: rows.map(p => p[valueKey] || 0), backgroundColor: horizontal ? '#002347' : palette, borderRadius: 6 }]
+        },
+        options: {
+          indexAxis: horizontal ? 'y' : 'x',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => asMoney ? money(ctx.raw) : String(ctx.raw) } } },
+          scales: { x: { beginAtZero: true }, y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    function doughnutChart(canvasId, rows) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      if (!hasRows(rows)) return emptyChart(canvasId, 'Chưa có dữ liệu cho biểu đồ này.');
+      new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels: rows.map(p => p.label), datasets: [{ data: rows.map(p => p.value || 0), backgroundColor: palette }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    const revenueDatasets = [
+      { label: 'Doanh thu', data: dashboard.salesTrend.map(p => p.totalRevenue || 0), borderColor: '#002347', backgroundColor: 'rgba(0,35,71,.08)', fill: true, tension: .35, money: true },
+      { label: 'Lợi nhuận ròng', data: dashboard.salesTrend.map(p => p.netProfit || 0), borderColor: '#198754', backgroundColor: 'rgba(25,135,84,.08)', fill: true, tension: .35, money: true }
+    ];
+
+    lineChart('overviewTrendChart', dashboard.salesTrend, { datasets: revenueDatasets, moneyAxis: true });
+    barChart('overviewBrandChart', dashboard.revenueByBrand, 'Doanh thu', 'value', false, true);
+    barChart('overviewCategoryChart', dashboard.revenueByCategory, 'Doanh thu', 'value', false, true);
+    doughnutChart('overviewPaymentChart', dashboard.paymentReconciliation);
+
+    lineChart('salesTrendChart', dashboard.salesTrend, { datasets: revenueDatasets, moneyAxis: true });
+    barChart('topProductsChart', dashboard.topProducts, 'Doanh thu', 'totalRevenue', true, true);
+    barChart('brandChart', dashboard.revenueByBrand, 'Doanh thu', 'value', false, true);
+    barChart('categoryChart', dashboard.revenueByCategory, 'Doanh thu', 'value', false, true);
+
+    barChart('inventoryChart', dashboard.inventoryByCategory, 'Giá trị tồn kho', 'value', false, true);
+    doughnutChart('paymentChart', dashboard.paymentReconciliation);
+    barChart('segmentChart', dashboard.revenueByCustomerSegment, 'Doanh thu', 'value', false, true);
+    lineChart('unitsTrendChart', dashboard.salesTrend, {
+      datasets: [{ label: 'Số lượng bán', data: dashboard.salesTrend.map(p => p.unitsSold || 0), borderColor: '#0b67b2', backgroundColor: 'rgba(11,103,178,.08)', fill: true, tension: .35 }],
+      moneyAxis: false
+    });
+    barChart('ratingChart', dashboard.ratingDistribution, 'Số review', 'value', false, false);
+
+    function syncDwh(btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG ĐỒNG BỘ...';
+      btn.disabled = true;
+      fetch('/admin/dwh/sync', { method: 'POST' })
+        .then(res => res.text().then(text => ({ status: res.status, text })))
+        .then(({ status, text }) => {
+          if (status === 200) {
+            alert('Đồng bộ DWH thành công!\n' + text);
+            window.location.reload();
+          } else {
+            alert('Lỗi đồng bộ DWH:\n' + text);
+          }
+        })
+        .catch(err => alert('Lỗi kết nối: ' + err))
+        .finally(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        });
+    }
+  </script>
+</body>
+</html>

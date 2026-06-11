@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Giỏ hàng — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .cart-grid{display:grid;grid-template-columns:1fr;gap:20px;padding:20px}
+    @media(min-width:992px){.cart-grid{grid-template-columns:1.5fr 1fr;padding:40px 80px}}
+    .cart-card{background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;border:1px solid var(--border-light);box-shadow:var(--shadow-sm)}
+    .cart-item-row{display:flex;gap:15px;padding:15px 0;border-bottom:1px solid var(--border-light);align-items:center}
+    .cart-checkbox{width:20px;height:20px;accent-color:var(--accent);cursor:pointer}
+    .cart-item-row:last-child{border-bottom:none}
+    .item-img{width:90px;height:90px;object-fit:contain;background:var(--bg);border-radius:var(--radius-sm)}
+    .qty-selector{display:flex;align-items:center;gap:10px;margin-top:10px}
+    .qty-selector button{width:28px;height:28px;border-radius:50%;border:1px solid var(--border-light);background:white;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .qty-selector button:hover{background:var(--bg)}
+    .summary-row{display:flex;justify-content:space-between;margin-bottom:15px}
+    .summary-total{font-size:1.2rem;font-weight:700;color:var(--accent);border-top:1px solid var(--border-light);padding-top:15px;margin-top:15px}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="mobile-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span>SHOP</span></a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div th:if="${error}" style="max-width: 1200px; margin: 20px auto 0; padding: 0 20px;">
+      <div style="background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-weight: 500; animation: fadeIn 0.3s ease;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span th:text="${error}">Thông báo lỗi</span>
+      </div>
+    </div>
+
+    <style>
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <div style="padding: 20px 20px 0; display: flex; align-items: center; gap: 20px; max-width: 1200px; margin: 0 auto; width: 100%;">
+      <button onclick="history.back()" style="background: var(--bg-light); border: 1px solid var(--border-color); color: var(--navy-primary); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 15px; border-radius: 8px; font-weight: 500; transition: all 0.2s;">
+        <i class="fas fa-arrow-left"></i> Quay lại
+      </button>
+      <h2 style="color: var(--navy-primary); margin: 0; flex: 1; text-align: center; margin-right: 120px;">GIỎ HÀNG CỦA BẠN</h2>
+    </div>
+      <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 30px;">
+        <div style="text-align: center; color: var(--accent);">
+          <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: 700;">1</div>
+          <div class="step-text" style="font-size: 0.85rem; font-weight: 600;">Giỏ hàng</div>
+        </div>
+        <div style="text-align: center; color: var(--text-muted); opacity: 0.5;">
+          <div class="step-number" style="border: 2px solid var(--border-light); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: 700;">2</div>
+          <div class="step-text" style="font-size: 0.85rem;">Thanh toán</div>
+        </div>
+        <div style="text-align: center; color: var(--text-muted); opacity: 0.5;">
+          <div class="step-number" style="border: 2px solid var(--border-light); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: 700;">3</div>
+          <div class="step-text" style="font-size: 0.85rem;">Hoàn tất</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cart-grid">
+      <div class="cart-items-col">
+        <div class="cart-card">
+          <div th:if="${cart == null || cart.items == null || cart.items.isEmpty()}" class="empty-state" style="text-align: center; padding: 40px 0;">
+            <i class="fas fa-shopping-bag" style="font-size: 3rem; opacity: 0.1; display: block; margin-bottom: 20px;"></i>
+            <h3 style="color: var(--navy-primary);">Giỏ hàng của bạn đang trống</h3>
+            <a th:href="@{/products}" class="btn-cta" style="background: var(--navy-primary); color: white; margin-top: 20px; display: inline-block; padding: 12px 24px; border-radius: var(--radius-md); text-decoration: none;">MUA SẮM NGAY</a>
+          </div>
+          
+          <div th:if="${cart != null and cart.items != null and !cart.items.isEmpty()}" style="border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="selectAll" class="cart-checkbox" checked onchange="toggleAll(this)">
+            <label for="selectAll" style="font-weight: 600; color: var(--navy-primary); cursor: pointer;">Chọn tất cả (<span th:text="${cart.items.size()}">0</span>)</label>
+          </div>
+          
+          <div th:if="${cart != null and cart.items != null and !cart.items.isEmpty()}">
+            <div th:each="item : ${cart.items}" class="cart-item-row">
+              <input type="checkbox" class="cart-checkbox item-checkbox" th:value="${item.cartItemId}" checked onchange="updateSummary()" th:data-price="${item.unitPrice}" th:data-qty="${item.quantity}">
+              <img th:src="${item.variant != null and item.variant.images != null and !item.variant.images.isEmpty() ? item.variant.images[0].url : 'https://placehold.co/90px/ffffff/002347?text=Phone'}"
+                   class="item-img"
+                   onerror="this.src='https://placehold.co/90px/ffffff/002347?text=Phone'">
+              <div style="flex: 1;">
+                <h4 style="font-size: 1rem; color: var(--navy-primary); margin-bottom: 5px;" th:text="${item.productName}">Product Name</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;" 
+                   th:text="${(item.variant != null ? (item.variant.storageGb != null ? item.variant.storageGb + 'GB' : '') + (item.variant.color != null ? ' / ' + item.variant.color : '') : '')}">Variant info</p>
+                <div class="qty-selector">
+                  <form th:action="@{/cart/update/{id}(id=${item.cartItemId})}" method="post" style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" onclick="const input = this.nextElementSibling; if(parseInt(input.value) > 1) { input.value = parseInt(input.value) - 1; this.form.submit(); }">−</button>
+                    <input type="number" name="quantity" th:value="${item.quantity}" min="1" 
+                           style="width: 45px; text-align: center; border: 1px solid var(--border-light); border-radius: 4px; padding: 4px; font-weight: 600; -moz-appearance: textfield;"
+                           onchange="if(this.value < 1) this.value = 1; this.form.submit()">
+                    <button type="button" onclick="const input = this.previousElementSibling; input.value = parseInt(input.value) + 1; this.form.submit();">+</button>
+                    <style>
+                      input[type=number]::-webkit-inner-spin-button, 
+                      input[type=number]::-webkit-outer-spin-button { 
+                        -webkit-appearance: none; 
+                        margin: 0; 
+                      }
+                    </style>
+                  </form>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div class="product-price" style="font-size: 1.1rem; margin-bottom: 10px;" th:text="${#numbers.formatDecimal(item.unitPrice, 0, 'COMMA', 0, 'POINT')} + ' ₫'">Price</div>
+                <form th:action="@{/cart/remove/{id}(id=${item.cartItemId})}" method="post">
+                  <button type="submit" style="background: none; border: none; color: #ff4d4f; cursor: pointer;"><i class="fas fa-trash-alt"></i></button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cart-summary-col" th:if="${cart != null and cart.items != null and !cart.items.isEmpty()}">
+        <div class="cart-card">
+          <h3 style="color: var(--navy-primary); margin-bottom: 20px;">TÓM TẮT ĐƠN HÀNG</h3>
+          <div class="summary-row">
+            <span>Tạm tính</span>
+            <span th:text="${#numbers.formatDecimal(total, 0, 'COMMA', 0, 'POINT')} + ' ₫'">0 ₫</span>
+          </div>
+          <div class="summary-row">
+            <span>Phí vận chuyển</span>
+            <span style="color: #28a745;">Miễn phí</span>
+          </div>
+          <div class="summary-row summary-total">
+            <span>Tổng cộng</span>
+            <span th:text="${#numbers.formatDecimal(total, 0, 'COMMA', 0, 'POINT')} + ' ₫'">0 ₫</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 15px 0;">(Giá đã bao gồm VAT và các loại thuế phí)</p>
+          <a href="javascript:void(0)" onclick="proceedToCheckout()" class="btn-cta" style="background: var(--accent); color: white; display: block; text-align: center; padding: 15px; margin-top: 20px; font-weight: 700; text-decoration: none; border-radius: var(--radius-md);">TIẾN HÀNH THANH TOÁN</a>
+          <a th:href="@{/products}" style="display: block; text-align: center; margin-top: 15px; color: var(--text-muted); font-size: 0.9rem; text-decoration: none;"><i class="fas fa-chevron-left" style="font-size: 0.7rem; margin-right: 5px;"></i> Tiếp tục mua sắm</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item active"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script>
+    function toggleAll(source) {
+      const checkboxes = document.querySelectorAll('.item-checkbox');
+      checkboxes.forEach(cb => cb.checked = source.checked);
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const checkboxes = document.querySelectorAll('.item-checkbox');
+      let total = 0;
+      let count = 0;
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const price = parseFloat(cb.getAttribute('data-price'));
+          const qty = parseInt(cb.getAttribute('data-qty'));
+          total += price * qty;
+          count++;
+        }
+      });
+      
+      const formatPrice = (num) => new Intl.NumberFormat('vi-VN').format(num) + ' ₫';
+      
+      const totalElements = document.querySelectorAll('.summary-total span:last-child, .summary-row:first-of-type span:last-child');
+      totalElements.forEach(el => el.innerText = formatPrice(total));
+      
+      document.getElementById('selectAll').checked = (count === checkboxes.length);
+    }
+
+    function proceedToCheckout() {
+      const selected = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+      if (selected.length === 0) {
+        alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán!');
+        return;
+      }
+      window.location.href = '/checkout?itemIds=' + selected.join(',');
+    }
+    
+    // Initial update
+    window.addEventListener('DOMContentLoaded', updateSummary);
+  </script>
+</body>
+</html>

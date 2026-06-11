@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Đăng nhập — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg)}
+    .auth-card{width:100%;max-width:400px;background:var(--bg-card);border-radius:var(--radius-xl);padding:32px 24px;box-shadow:var(--shadow-lg)}
+    .auth-logo{text-align:center;margin-bottom:24px}
+    .auth-logo h1{font-size:1.5rem}
+    .auth-logo p{color:var(--text-secondary);font-size:0.875rem;margin-top:4px}
+    .auth-divider{text-align:center;color:var(--text-muted);font-size:0.8125rem;margin:20px 0;position:relative}
+    .auth-divider::before,.auth-divider::after{content:'';position:absolute;top:50%;width:calc(50% - 30px);height:1px;background:var(--border-light)}
+    .auth-divider::before{left:0}
+    .auth-divider::after{right:0}
+    .alert { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 0.875rem; text-align: center; }
+    .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+    .alert-warning { background: #fff7ed; color: #c2410c; border: 1px solid #fb923c; }
+    .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #4ade80; }
+    .forgot-link{text-align:right;margin-top:-8px;margin-bottom:4px}
+    .forgot-link a{font-size:0.8rem;color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="auth-page" style="background: var(--bg-light);">
+    <div class="auth-card" style="box-shadow: var(--shadow-premium);">
+      <div class="auth-logo">
+        <h1 style="color:var(--navy-primary); font-size: 2rem; font-weight: 800; letter-spacing: -1px;">PHONE<span style="color:var(--accent-gold)">SHOP</span></h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Trải nghiệm công nghệ Flagship đỉnh cao</p>
+      </div>
+      
+      <div th:if="${param.blocked}" class="alert alert-warning">
+        <i class="fas fa-lock"></i> Tài khoản tạm thời bị khóa do nhập sai quá nhiều lần.
+      </div>
+      <div th:if="${param.error}" class="alert alert-error">
+        <i class="fas fa-exclamation-circle"></i> Sai email hoặc mật khẩu.
+      </div>
+      <div th:if="${param.logout}" class="alert alert-success">
+        <i class="fas fa-check-circle"></i> Đã đăng xuất thành công.
+      </div>
+      <div th:if="${param.registered}" class="alert alert-success">
+        <i class="fas fa-check-circle"></i> Đăng ký thành công!
+      </div>
+
+      <form th:action="@{/login}" method="post" class="flex-col gap-16">
+        <div class="form-group">
+          <label class="form-label">Email tài khoản</label>
+          <input type="email" name="username" class="form-input-custom" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu</label>
+          <input type="password" name="password" class="form-input-custom" placeholder="••••••••" required minlength="6">
+          <div class="forgot-link" style="margin-top: 5px;">
+            <a th:href="@{/forgot-password}" style="color: var(--accent-gold); font-size: 0.85rem; font-weight: 600;">Quên mật khẩu?</a>
+          </div>
+        </div>
+        <button type="submit" class="btn-cta" style="width: 100%; background: var(--navy-primary); color: white; border: none; margin-top: 10px;">ĐĂNG NHẬP</button>
+      </form>
+      <div class="auth-divider">hoặc</div>
+      <a th:href="@{/register}" class="btn btn-outline btn-block" style="border-radius: 50px; font-weight: 700;">Tạo tài khoản mới</a>
+      <div class="text-center mt-16">
+        <a th:href="@{/}" class="text-sm" style="color:var(--text-muted); font-weight: 600;"><i class="fas fa-arrow-left"></i> Về trang chủ</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

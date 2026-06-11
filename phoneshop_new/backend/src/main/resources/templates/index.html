@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>PhoneShop — Điện Thoại Chính Hãng</title>
+  <meta name="description" content="Mua điện thoại chính hãng giá tốt nhất. iPhone, Samsung, Oppo, Xiaomi. Giao hàng nhanh, bảo hành 12 tháng.">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* Mobile Drawer */
+    .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .3s ease}
+    .drawer-overlay.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:var(--bg-card);z-index:1000;transition:left .3s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,0.15);display:flex;flex-direction:column;overflow-y:auto}
+    .drawer.open{left:0}
+    .drawer-header{padding:20px 16px;background:linear-gradient(135deg,var(--navy-primary),var(--navy-light));color:#fff;display:flex;align-items:center;justify-content:space-between}
+    .drawer-header .logo{font-size:1.25rem;font-weight:800;letter-spacing:-0.5px}
+    .drawer-header .logo span{color:var(--accent-gold)}
+    .drawer-close{background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm)}
+    .drawer-close:hover{background:rgba(255,255,255,0.15)}
+    .drawer-nav{padding:8px 0;flex:1}
+    .drawer-link{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--text);font-size:0.9375rem;font-weight:500;text-decoration:none;transition:background .15s}
+    .drawer-link:hover,.drawer-link:active{background:var(--accent-light);color:var(--accent)}
+    .drawer-link i{width:20px;text-align:center;color:var(--text-muted);font-size:1rem}
+    .drawer-link:hover i,.drawer-link:active i{color:var(--accent)}
+    .drawer-divider{height:1px;background:var(--border-light);margin:4px 16px}
+    .drawer-section-label{padding:12px 20px 4px;font-size:0.6875rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px}
+    .drawer-footer{padding:16px;border-top:1px solid var(--border-light);font-size:0.75rem;color:var(--text-muted);text-align:center}
+    @media(min-width:768px){.mobile-only{display:none!important}}
+  </style>
+</head>
+<body>
+
+  <!-- MOBILE DRAWER MENU -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <nav class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="logo">Phone<span style="color:var(--accent-gold)">Shop</span></div>
+      <button class="drawer-close" onclick="closeDrawer()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="drawer-nav">
+      <div class="drawer-section-label">Điều hướng</div>
+      <a th:href="@{/}" class="drawer-link"><i class="fas fa-home"></i>Trang chủ</a>
+      <a th:href="@{/products}" class="drawer-link"><i class="fas fa-th-large"></i>Sản phẩm</a>
+      <a th:href="@{/cart}" class="drawer-link"><i class="fas fa-shopping-bag"></i>Giỏ hàng</a>
+
+      <div class="drawer-divider"></div>
+      <div class="drawer-section-label">Tài khoản</div>
+      <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/orders}" class="drawer-link"><i class="fas fa-box"></i>Đơn hàng</a>
+      <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/profile}" class="drawer-link"><i class="fas fa-user-circle"></i>Tài khoản</a>
+      <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/support}" class="drawer-link"><i class="fas fa-headset"></i>Hỗ trợ</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="drawer-link"><i class="fas fa-cog"></i>Quản trị</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="drawer-link"><i class="fas fa-cog"></i>Quản trị</a>
+      <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="drawer-link"><i class="fas fa-sign-in-alt"></i>Đăng nhập</a>
+      <a sec:authorize="!isAuthenticated()" th:href="@{/register}" class="drawer-link"><i class="fas fa-user-plus"></i>Đăng ký</a>
+
+      <div sec:authorize="isAuthenticated()">
+        <div class="drawer-divider"></div>
+        <form th:action="@{/logout}" method="post" style="margin:0">
+          <button type="submit" class="drawer-link" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;font:inherit;color:var(--danger)">
+            <i class="fas fa-sign-out-alt" style="color:var(--danger)"></i>Đăng xuất
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="drawer-footer">© 2026 PhoneShop</div>
+  </nav>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <button class="mobile-btn" onclick="openDrawer()"><i class="fas fa-bars"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></a>
+      <nav class="nav-desktop">
+        <a th:href="@{/}" class="nav-link active">Trang chủ</a>
+        <a th:href="@{/products}" class="nav-link">Sản phẩm</a>
+        <a href="#" class="nav-link">Khuyến mãi</a>
+        <a href="#" class="nav-link">Liên hệ</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      <a th:href="@{/products}" class="header-icon"><i class="fas fa-search"></i></a>
+      <a th:href="@{/cart}" class="header-icon"><i class="fas fa-shopping-bag"></i><span class="badge" id="cartBadge" th:text="${cartCount ?: 0}">0</span></a>
+      <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="header-icon" title="Đăng nhập"><i class="fas fa-user-circle"></i><span class="desktop-only" style="font-size: 0.85rem; margin-left: 5px;">Đăng nhập</span></a>
+      <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/profile}" class="header-icon" title="Tài khoản"><i class="fas fa-user-circle"></i></a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="header-icon" title="Quản lý"><i class="fas fa-cog"></i></a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="header-icon" title="Quản lý"><i class="fas fa-cog"></i></a>
+      <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" style="display:inline; margin:0;">
+         <button type="submit" class="header-icon" style="background:none;border:none;cursor:pointer;" title="Đăng xuất"><i class="fas fa-sign-out-alt"></i></button>
+      </form>
+    </div>
+  </header>
+
+  <!-- HERO BANNER -->
+  <main class="page">
+    <section class="hero-section">
+      <div class="hero-banner">
+        <div class="hero-left">
+          <span class="hero-badge"><i class="fas fa-bolt"></i> Ưu đãi đặc biệt</span>
+          <h2>Điện Thoại Mới <span class="hero-year">2026</span></h2>
+          <p>Khám phá bộ sưu tập Flagship đẳng cấp. Giảm ngay <strong>30%</strong> hôm nay.</p>
+          <div class="hero-actions">
+            <a th:href="@{/products}" class="btn-cta btn-shine">MUA NGAY <i class="fas fa-arrow-right" style="margin-left: 8px;"></i></a>
+            <a th:href="@{/products}" class="btn-cta-outline">Xem sản phẩm</a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><strong>500+</strong><span>Sản phẩm</span></div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat"><strong>12</strong><span>Tháng BH</span></div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat"><strong>Free</strong><span>Giao hàng</span></div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <img src="/assets/images/hero-banner.png" alt="Flagship Phone 2026" class="hero-phone-img">
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORIES -->
+    <section class="section">
+      <h2 class="section-title">Danh mục sản phẩm</h2>
+      <div class="category-container">
+        <button class="category-pill active" onclick="navigate('/products')"><i class="fas fa-mobile-alt"></i> Tất cả</button>
+        <button class="category-pill" onclick="navigate('/products',{brand:'Apple'})"><i class="fab fa-apple"></i> Apple</button>
+        <button class="category-pill" onclick="navigate('/products',{brand:'Samsung'})"><i class="fas fa-mobile-screen"></i> Samsung</button>
+        <button class="category-pill" onclick="navigate('/products',{brand:'Oppo'})"><i class="fas fa-mobile"></i> Oppo</button>
+        <button class="category-pill" onclick="navigate('/products',{brand:'Xiaomi'})"><i class="fas fa-tablet-screen-button"></i> Xiaomi</button>
+      </div>
+    </section>
+
+    <!-- FEATURED PRODUCTS -->
+    <section class="section">
+      <h2 class="section-title">Sản phẩm nổi bật <a th:href="@{/products}">Xem tất cả →</a></h2>
+      <div class="product-grid">
+        <div th:each="p : ${featuredProducts}" class="product-card" th:onclick="'window.location.href=\'/products/' + ${p.productId} + '\''">
+          <img th:src="${p.images != null && !p.images.isEmpty() ? p.images[0].imageUrl : 'https://placehold.co/400x400/f5f5f7/999?text=No+Image'}" 
+               th:alt="${p.name}" class="product-img" 
+               onerror="this.src='https://placehold.co/400x400/f5f5f7/999?text=No+Image'">
+          <div class="product-name" th:text="${p.name}">Product Name</div>
+          <div class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'COMMA', 0, 'POINT')} + ' ₫'">Price</div>
+          <div th:if="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--success);font-weight:600;margin-top:8px"><i class="fas fa-check-circle"></i> Còn hàng</div>
+          <div th:unless="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--danger);font-weight:600;margin-top:8px">Hết hàng</div>
+        </div>
+        <div th:if="${#lists.isEmpty(featuredProducts)}" style="grid-column:1/-1">
+            <div class="empty-state"><p>Chưa có sản phẩm</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROMO BANNER -->
+    <div style="margin:20px 16px">
+      <div style="background:linear-gradient(135deg, var(--navy-primary) 0%, var(--navy-light) 100%);border-radius:var(--radius-lg);padding:24px;color:#fff;text-align:center;border:1px solid rgba(197, 160, 89, 0.3)">
+        <h3 style="font-size:1.125rem;font-weight:700;color:var(--accent-gold)">Miễn phí vận chuyển</h3>
+        <p style="font-size:0.8125rem;opacity:0.9;margin-top:4px">Cho đơn hàng ở nội thành </p>
+      </div>
+    </div>
+
+    <!-- MORE PRODUCTS -->
+    <section class="section">
+      <h2 class="section-title">Sản phẩm mới </h2>
+
+      <h2><a th:href="@{/products}">Xem tất cả →</a> </h2>  
+      <div class="product-grid">
+        <div th:each="p : ${moreProducts}" class="product-card" th:onclick="'window.location.href=\'/products/' + ${p.productId} + '\''">
+          <img th:src="${p.images != null && !p.images.isEmpty() ? p.images[0].imageUrl : 'https://placehold.co/400x400/f5f5f7/999?text=No+Image'}" 
+               th:alt="${p.name}" class="product-img" 
+               onerror="this.src='https://placehold.co/400x400/f5f5f7/999?text=No+Image'">
+          <div class="product-name" th:text="${p.name}">Product Name</div>
+          <div class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'COMMA', 0, 'POINT')} + ' ₫'">Price</div>
+          <div th:if="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--success);font-weight:600;margin-top:8px"><i class="fas fa-check-circle"></i> Còn hàng</div>
+          <div th:unless="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--danger);font-weight:600;margin-top:8px">Hết hàng</div>
+        </div>
+        <div th:if="${#lists.isEmpty(moreProducts)}" style="grid-column:1/-1">
+            <div class="empty-state"><p>Chưa có sản phẩm</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="container">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px">
+          <div>
+            <div class="footer-title">PhoneShop</div>
+            <div class="footer-links">
+              <a href="#">Về chúng tôi</a>
+              <a href="#">Liên hệ</a>
+              <a href="#">Chính sách bảo mật</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer-title">Hỗ trợ</div>
+            <div class="footer-links">
+              <a href="#">FAQ</a>
+              <a href="#">Đổi trả hàng</a>
+              <a href="#">Bảo hành</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-social">
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+        <div class="footer-bottom">© 2026 PhoneShop. All rights reserved.</div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- BOTTOM NAV (Mobile) -->
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item active"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/orders}" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a sec:authorize="hasRole('CUSTOMER')" th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+    <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="bottom-nav-item"><i class="fas fa-cog"></i><span>Quản trị</span></a>
+    <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="bottom-nav-item"><i class="fas fa-cog"></i><span>Quản trị</span></a>
+    <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="bottom-nav-item"><i class="fas fa-sign-in-alt"></i><span>Đăng nhập</span></a>
+  </nav>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    function openDrawer() {
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('drawerOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateHeader();
+    });
+  </script>
+</body>
+</html>

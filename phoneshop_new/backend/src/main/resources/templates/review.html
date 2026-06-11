@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Đánh giá sản phẩm — PhoneShop</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .review-card-section{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+    .product-row{display:flex;gap:12px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border-light);margin-bottom:16px}
+    .product-row img{width:72px;height:72px;border-radius:var(--radius-md);object-fit:cover;background:var(--bg)}
+    .star-input{display:flex;gap:4px;font-size:2rem;margin:12px 0}
+    .star-input .star{cursor:pointer;color:var(--border);transition:color 0.15s}
+    .star-input .star.active,.star-input .star:hover{color:var(--warning)}
+    .rating-label{font-size:0.875rem;color:var(--accent);font-weight:600;min-height:20px}
+    .review-item-existing{padding:12px 0;border-bottom:1px solid var(--border-light)}
+    .review-item-existing:last-child{border-bottom:none}
+    @media(min-width:768px){.review-layout{max-width:640px;margin:0 auto;padding:16px 32px}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <h3>Đánh giá sản phẩm</h3>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="review-layout" style="padding:0 16px">
+      <div id="reviewContainer">
+        <div style="text-align:center;padding:60px"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a href="products.html" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a href="cart.html" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a href="orders.html" class="bottom-nav-item active"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a href="profile.html" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    // URL param: review.html?productId=123
+    // Từ order-detail.html link sang: navigate('review.html', { productId: item.productId })
+
+    let selectedRating = 5;
+    let productId = null;
+
+    document.addEventListener('DOMContentLoaded', loadReviewPage);
+
+    async function loadReviewPage() {
+      productId = getParam('productId');
+
+      if (!productId) {
+        document.getElementById('reviewContainer').innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Thiếu thông tin sản phẩm</h3>
+            <a href="orders.html" class="btn btn-primary btn-sm mt-12">Quay lại đơn hàng</a>
+          </div>`;
+        return;
+      }
+
+      try {
+        // Backend: GET /api/products/{id} → trả về { product, reviews, myReview, canReview, averageRating }
+        const res = await api.get(`/api/products/${productId}`);
+        if (res.status === 200 && res.data) {
+          renderPage(res.data);
+        } else {
+          showError('Không tìm thấy sản phẩm');
+        }
+      } catch {
+        showError('Lỗi kết nối');
+      }
+    }
+
+    function renderPage(data) {
+      const product   = data.product || {};
+      const reviews   = data.reviews || [];
+      const myReview  = data.myReview;
+      const canReview = data.canReview;
+      const avgRating = data.averageRating;
+
+      const mainImg = product.images && product.images.length > 0
+        ? product.images[0].imageUrl
+        : 'https://placehold.co/72x72/f5f5f7/999?text=SP';
+
+      // Nếu đã có review của mình thì pre-fill
+      if (myReview) {
+        selectedRating = myReview.rating || 5;
+      }
+
+      document.getElementById('reviewContainer').innerHTML = `
+        <!-- Thông tin sản phẩm -->
+        <div class="review-card-section">
+          <div class="product-row">
+            <img src="${mainImg}" onerror="this.src='https://placehold.co/72x72/f5f5f7/999?text=SP'">
+            <div>
+              <div class="fw-600">${product.name || 'Sản phẩm'}</div>
+              <div class="text-sm text-muted">${product.brand || ''}</div>
+              ${avgRating ? `<div class="text-xs" style="color:var(--warning)">★ ${avgRating.toFixed(1)}/5 (${reviews.length} đánh giá)</div>` : ''}
+            </div>
+          </div>
+
+          ${!canReview && !myReview ? `
+            <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius-md);padding:12px;font-size:0.8125rem;color:#856404">
+              <i class="fas fa-info-circle"></i> Bạn cần mua sản phẩm này trước khi đánh giá.
+            </div>
+          ` : `
+          <!-- Form đánh giá -->
+          <form id="reviewForm">
+            <div class="fw-600 mb-8">${myReview ? 'Chỉnh sửa đánh giá của bạn' : 'Viết đánh giá'}</div>
+
+            <div class="form-group mb-12">
+              <label class="form-label">Số sao</label>
+              <div class="star-input" id="starRow">
+                ${[1,2,3,4,5].map(i => `
+                  <i class="fas fa-star star ${i <= selectedRating ? 'active' : ''}"
+                     data-val="${i}"
+                     onclick="setRating(${i})"></i>`).join('')}
+              </div>
+              <div class="rating-label" id="ratingLabel">${ratingText(selectedRating)}</div>
+            </div>
+
+            <div class="form-group mb-16">
+              <label class="form-label">Nhận xét</label>
+              <textarea id="comment" class="form-input" style="min-height:100px;resize:vertical"
+                        placeholder="Chia sẻ trải nghiệm của bạn..."
+                        maxlength="1000">${myReview ? (myReview.comment || '') : ''}</textarea>
+              <div style="text-align:right;font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                <span id="charCount">${myReview && myReview.comment ? myReview.comment.length : 0}</span>/1000
+              </div>
+            </div>
+
+            <div class="flex gap-8">
+              <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                <i class="fas fa-paper-plane"></i> ${myReview ? 'Cập nhật' : 'Gửi đánh giá'}
+              </button>
+              ${myReview ? `
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteReview(${myReview.reviewId})">
+                <i class="fas fa-trash"></i>
+              </button>` : ''}
+            </div>
+          </form>
+          `}
+        </div>
+
+        <!-- Đánh giá khác -->
+        ${reviews.length > 0 ? `
+        <div class="review-card-section">
+          <div class="fw-600 mb-12">Tất cả đánh giá (${reviews.length})</div>
+          ${reviews.map(r => `
+            <div class="review-item-existing">
+              <div class="flex justify-between items-center mb-4">
+                <span class="fw-500 text-sm">${r.customerName || 'Khách hàng'}</span>
+                <span style="color:var(--warning);font-size:0.875rem">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+              </div>
+              ${r.comment ? `<p class="text-sm text-muted">${r.comment}</p>` : ''}
+              <div class="text-xs text-muted mt-4">${r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}</div>
+            </div>`).join('')}
+        </div>` : ''}
+      `;
+
+      // Setup form nếu có
+      const form = document.getElementById('reviewForm');
+      if (form) setupForm(myReview);
+    }
+
+    function setupForm(myReview) {
+      document.getElementById('comment').addEventListener('input', e => {
+        document.getElementById('charCount').textContent = e.target.value.length;
+      });
+
+      document.getElementById('reviewForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div>';
+
+        const comment = document.getElementById('comment').value.trim();
+
+        try {
+          // Backend: POST /api/products/{productId}/reviews
+          // Nhận @RequestParam Integer rating, @RequestParam(required=false) String comment
+          const res = await api.postForm(`/api/products/${productId}/reviews`, {
+            rating: selectedRating,
+            comment: comment,
+          });
+
+          if (res.status === 200) {
+            showToast(myReview ? 'Đã cập nhật đánh giá!' : 'Cảm ơn bạn đã đánh giá!', 'success');
+            setTimeout(() => loadReviewPage(), 800); // reload trang để hiển thị review mới
+          } else {
+            showToast(res.message || 'Lỗi gửi đánh giá', 'error');
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-paper-plane"></i> ${myReview ? 'Cập nhật' : 'Gửi đánh giá'}`;
+          }
+        } catch {
+          showToast('Lỗi kết nối', 'error');
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fas fa-paper-plane"></i> ${myReview ? 'Cập nhật' : 'Gửi đánh giá'}`;
+        }
+      });
+    }
+
+    function setRating(val) {
+      selectedRating = val;
+      document.querySelectorAll('.star').forEach(s => {
+        s.classList.toggle('active', parseInt(s.dataset.val) <= val);
+      });
+      document.getElementById('ratingLabel').textContent = ratingText(val);
+    }
+
+    function ratingText(r) {
+      return ['', 'Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Rất hài lòng'][r] || '';
+    }
+
+    async function deleteReview(reviewId) {
+      if (!confirm('Xóa đánh giá này?')) return;
+      try {
+        // Backend: DELETE /api/products/{productId}/reviews/{reviewId}
+        const res = await api.del(`/api/products/${productId}/reviews/${reviewId}`);
+        if (res.status === 200) {
+          showToast('Đã xóa đánh giá', 'info');
+          setTimeout(() => loadReviewPage(), 500);
+        } else {
+          showToast(res.message || 'Lỗi xóa', 'error');
+        }
+      } catch {
+        showToast('Lỗi kết nối', 'error');
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('reviewContainer').innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>${msg}</h3>
+          <a href="orders.html" class="btn btn-primary btn-sm mt-12">Quay lại</a>
+        </div>`;
+    }
+  </script>
+</body>
+</html>

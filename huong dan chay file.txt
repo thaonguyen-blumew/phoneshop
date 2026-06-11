@@ -1,0 +1,125 @@
+HUONG DAN CHAY PIPELINE PHONE SHOP
+
+1. Kien truc tong the
+
+OLTP MySQL -> mock_excel.py -> staging -> DWH -> Power BI
+
+Y nghia:
+- OLTP: co so du lieu giao dich goc
+- mock_excel.py: sinh 2 file Excel phuc vu phan tich
+- staging: lop trung gian, nhan du lieu tho
+- DWH: kho du lieu phan tich
+- Power BI: dung DWH de lam dashboard
+
+2. Cac file can nho
+
+- init_oltp.sql: tao database OLTP
+- data.sql: nap du lieu ban dau vao OLTP
+- backfill_oltp.py: sua du lieu san pham/variant neu can
+- mock_excel.py: sinh / cap nhat 2 file Excel mock
+- staging/phoneshop_stg_schema.sql: tao schema staging
+- dwh/phoneshop_dw_target_schema.sql: tao schema DWH
+- etl_target_pipeline.py: noi chua logic ETL that
+- run_daily_pipeline.py: file runner cho Task Scheduler
+
+3. Thu tu chay lan dau
+
+Neu ban moi bat dau tu OLTP:
+
+1. Chay init_oltp.sql
+2. Chay data.sql
+3. Chay backfill_oltp.py
+4. Chay mock_excel.py
+5. Chay staging/phoneshop_stg_schema.sql
+6. Chay dwh/phoneshop_dw_target_schema.sql
+7. Chay etl_target_pipeline.py
+8. Mo Power BI va ket noi vao DWH
+
+4. Thu tu chay hang ngay
+
+Neu da co schema roi, pipeline hang ngay chi can:
+
+1. mock_excel.py
+2. etl_target_pipeline.py
+
+Trong repo, file run_daily_pipeline.py da gom 2 buoc nay lai thanh 1 lenh.
+
+Lenh chay thu cong:
+
+C:\Users\Tuana\AppData\Local\Programs\Python\Python311\python.exe "c:\Users\Tuana\Downloads\phoneshop (5)\phoneshop\olap\run_daily_pipeline.py"
+
+5. Y nghia tung buoc ETL
+
+E - Extract:
+- doc users, addresses, categories, products, product_variants, orders, order_items, payments, reviews tu OLTP
+- doc inventory_mock.xlsx va vnpay_statement_mock.xlsx
+
+T - Transform:
+- chuan hoa ten san pham va mau
+- tach product base model va variant color
+- tinh customer_segment
+- tinh price_tier
+- tinh gross_profit, net_profit
+- doi soat payment
+- build inventory snapshot
+- build review verified status
+
+L - Load:
+- nap vao staging
+- nap vao DWH
+
+6. Cac bang chinh trong DWH
+
+- Dim_Date
+- Dim_Product
+- Dim_Customer
+- Fact_Sales
+- Fact_Payments
+- Fact_Inventory
+- Fact_Reviews
+
+7. Cach chay daily bang Windows Task Scheduler
+
+Task neu da tao se co dang:
+- Ten task: PhoneShopDailyPipeline
+- Gio chay: 10:00 PM
+
+Task nay nen goi file run_daily_pipeline.py.
+
+Neu muon xem lai:
+- Mo Task Scheduler
+- Vao Task Scheduler Library
+- Tim task ten PhoneShopDailyPipeline
+- Xem tab Triggers de biet gio chay
+- Xem tab Actions de biet no dang goi file nao
+- Xem tab History neu muon biet da chay hay chua
+
+Quan trong:
+- Neu may con bat va dang ngu, task co the chay
+- Neu may shutdown hoan toan, task KHONG chay duoc luc 02:00
+- Neu muon task chay trong luc may tam tat man hinh, nen dung Sleep thay vi Shutdown
+- Neu ban muon may van tat vao ban dem, can chuyen pipeline sang may chu / laptop always-on / server khac
+
+8. Cach xu ly neu bo qua gio chay
+
+Task Scheduler co the duoc cau hinh de:
+- chay ngay khi may bat len neu da qua gio
+- chi chay khi co ket noi phu hop
+
+Nhung neu may da shutdown, no van phai doi den khi may duoc bat len moi chay duoc.
+
+9. Power BI
+
+Sau khi ETL chay xong:
+- mo Power BI
+- connect vao database DWH
+- dung cac measure trong KPI_FORMULAS.md
+- dung cac bang fact/dim de lam dashboard
+
+10. Ghi nho ngan
+
+- mock_excel.py khong phai file tinh, no cap nhat tang dan theo ngay
+- backfill_oltp.py khong phai file daily, chi dung khi can sua OLTP
+- etl_target_pipeline.py la file can chay de day du lieu sang DWH
+- run_daily_pipeline.py la file nen dua vao schedule
+

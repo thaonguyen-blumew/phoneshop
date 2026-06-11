@@ -1,0 +1,28 @@
+TƯ VẤN THIẾT KẾ DASHBOARD: OLTP (Vận hành) vs OLAP (Phân tích BI)
+Dựa trên kiến trúc dự án và yêu cầu của bạn, để sử dụng Chart.js động nhiều lớp kết hợp tư duy BI, tôi đề xuất sự phân tách rõ rệt giữa hai luồng Dashboard như sau:
+
+1. Dashboard Tiêu Chuẩn Vận Hành (Operational Dashboard - Dùng DB OLTP, Spring Boot & Chart.js)
+Đây là Dashboard dành cho Nhân viên / Manager dùng để theo dõi sức khỏe thời gian thực (real-time) của hệ thống. Dữ liệu truy vấn trực tiếp bằng JPA (từ order, product, payment). Mục đích: Theo dõi tức thì, giải quyết điểm nóng trong ngày/tuần.
+
+Các thông tin & biểu đồ bắt buộc (cần có trên Chart.js):
+
+Tổng quan (KPI Cards Thời gian thực): Tổng đơn hàng hôm nay, Đơn đang chờ xử lý (Pending), Doanh số trong ngày, Số lượng sản phẩm sắp hết hàng (< 5).
+Tiến độ Đơn hàng trong ngày (Doughnut Chart): Trạng thái đơn hàng (Pending -> Confirmed -> Shipping -> Delivered -> Cancelled). Bạn có thể click vào phần "Pending" trên biểu đồ để danh sách chi tiết đơn hàng tương ứng hiện ra bên dưới.
+Top 5 Sản phẩm bán chạy nhất / chậm nhất (Bar Chart): Cập nhật theo tuần. Mục tiêu: Nhắc nhân viên đẩy kho hoặc kiểm tra kho.
+Biểu đồ Doanh số 7-14 ngày gần nhất (Line Chart): So sánh doanh số ngày hôm nay với các ngày trong tuần trước.
+Kỹ thuật Chart.js động cho OLTP:
+
+Interactive (Drill-down cơ bản): Chart.js hỗ trợ onClick event. Khi click vào một cột trong Bar Chart (VD: Sản phẩm A), gọi AJAX về Spring Boot để fetch ngay lập tức các đơn hàng chứa Sản phẩm A vừa đặt hôm nay và hiển thị dạng bảng (Table) ngay bên dưới biểu đồ.
+
+2. Dashboard Mô hình dữ liệu OLAP (Analytical BI Dashboard - Dùng Data Warehouse)
+Đây là Dashboard dành riêng cho Manager / Giám đốc để đưa ra quyết định chiến lược, thường chạy ETL theo Batch (Cuối ngày hoặc theo giờ) và hiển thị qua PowerBI (Hoặc nhúng iframe PowerBI vào web).
+
+Các thông tin & biểu đồ phân tích sâu (Multi-dimensional):
+
+Phân tích nhân khẩu học & Vị trí (Geo-Map / Heatmap): Tỉnh thành nào (Hà Nội, TP.HCM,...) có lượng đơn hàng cao nhất? Đơn bị hoàn/hủy nhiều nhất ở đâu? (Rất hữu ích để điều chỉnh phí Ship).
+Phân tích Xu hướng lợi nhuận (Profit Margin Analysis): Doanh số (Gross Revenue) trừ đi Chi phí nhập (Import Price) và Chi phí Vận chuyển (Shipping Fee) theo từng Quý/Tháng (Line & Area Chart kết hợp).
+Phân tích Cohort (Khách hàng quay lại): Có bao nhiêu khách hàng tháng này là người đã từng mua hàng tháng trước? (Retention Rate).
+Cross-selling / Market Basket Analysis: Khách mua "iPhone 15" thường mua kèm phụ kiện gì? Để cấu hình hệ thống gợi ý sản phẩm.
+Sự khác biệt cốt lõi: Nếu bạn cố gắng làm các truy vấn như Profit Margin hay Cohort trên DB OLTP gốc, hệ thống sẽ sập hoặc rất chậm vì phải JOIN hàng triệu row của order_items, products, payments. Thay vào đó, mô hình dữ liệu DWH (Star Schema/Snowflake) với các bảng Fact (FactSales) và Dimension (DimProduct, DimTime, DimLocation) sẽ giúp xử lý các phân tích đa chiều này một cách mượt mà.
+
+Bạn thấy những ý tưởng này thế nào? Chúng ta có nên bắt đầu lập kế hoạch (Implementation Plan) để phát triển Dashboard Vận Hành với Chart.js trước không?

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title th:text="${product.name} + ' — PhoneShop'">Chi tiết sản phẩm — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .detail-img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--bg);border-radius:0}
+    .detail-thumbs{display:flex;gap:8px;padding:8px 16px;overflow-x:auto;scrollbar-width:none}
+    .detail-thumbs::-webkit-scrollbar{display:none}
+    .detail-thumb{width:56px;height:56px;border-radius:var(--radius-sm);border:2px solid var(--border-light);object-fit:cover;cursor:pointer;flex-shrink:0}
+    .detail-thumb.active{border-color:var(--accent)}
+    .detail-info{padding:16px}
+    .detail-actions{display:flex;gap:8px;padding:16px;position:sticky;bottom:0;background:var(--bg-card);border-top:1px solid var(--border-light);z-index:10}
+    /* Nếu có bottom nav thì mới đẩy lên */
+    body.has-bottom-nav .detail-actions{bottom:calc(var(--bottom-nav-h, 60px))}
+    .variant-chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip-disabled{opacity:0.45;cursor:not-allowed!important;text-decoration:line-through}
+    .reviews-section{padding:16px}
+    .review-item{padding:12px 0;border-bottom:1px solid var(--border-light)}
+    .review-item:last-child{border-bottom:none}
+    @media(min-width:768px){
+      .detail-layout{display:flex;gap:32px;padding:24px 32px;max-width:1000px;margin:0 auto}
+      .detail-img-col{flex:1;position:sticky;top:80px;height:fit-content}
+      .detail-img{border-radius:var(--radius-lg)}
+      .detail-info-col{flex:1}
+      .detail-actions{position:static;border:none;padding:0;margin-top:16px}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="mobile-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></a>
+      <nav class="nav-desktop">
+        <a th:href="@{/}" class="nav-link">Trang chủ</a>
+        <a th:href="@{/products}" class="nav-link active">Sản phẩm</a>
+        <a href="#" class="nav-link">Khuyến mãi</a>
+        <a href="#" class="nav-link">Liên hệ</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      <a th:href="@{/cart}" class="header-icon">
+        <i class="fas fa-shopping-bag"></i>
+        <span class="badge cart-badge" id="cartBadge" th:text="${cartCount ?: 0}">0</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <!-- Breadcrumb and Back Button -->
+    <div style="margin-bottom: 20px; font-size: 0.9rem; padding: 20px 16px 0 16px; display: flex; align-items: center; gap: 20px;">
+      <button onclick="history.back()" style="background: var(--bg-light); border: 1px solid var(--border-color); color: var(--navy-primary); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 15px; border-radius: 8px; font-weight: 500; transition: all 0.2s;">
+        <i class="fas fa-arrow-left"></i> Quay lại
+      </button>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <a th:href="@{/}" style="color: var(--text-muted)">Trang chủ</a>
+        <span style="color: var(--text-muted)">/</span>
+        <a th:href="@{/products}" style="color: var(--text-muted)">Sản phẩm</a>
+        <span style="color: var(--text-muted)">/</span>
+        <span th:text="${product.name}" style="color: var(--navy-primary); font-weight: 600;"></span>
+      </div>
+    </div>
+
+    <div class="detail-layout">
+      <!-- Cột trái: Ảnh -->
+      <div class="detail-img-col">
+        <div class="product-card" style="padding: 30px; cursor: default;">
+          <img id="mainImage" th:src="${product.images != null and !product.images.isEmpty() ? product.images[0].imageUrl : 'https://placehold.co/600x600/ffffff/002347?text=Phone'}"
+               style="width: 100%; height: 400px; object-fit: contain;" th:alt="${product.name}">
+        </div>
+       
+        <div class="detail-thumbs" th:if="${product.images != null and product.images.size() gt 1}">
+          <img th:each="img, iterStat : ${product.images}"
+               th:src="${img.imageUrl}"
+               th:class="${iterStat.index == 0 ? 'detail-thumb active' : 'detail-thumb'}"
+               th:attr="data-url=${img.imageUrl}"
+               onclick="changeImage(this, this.getAttribute('data-url'))">
+        </div>
+      </div>
+
+      <!-- Cột phải: Thông tin -->
+      <div class="detail-info-col">
+        <div class="detail-info">
+          <h1 class="product-name" style="font-size: 2.2rem; text-align: left; margin-bottom: 10px;" th:text="${product.name}">Tên sản phẩm</h1>
+          <p style="color: var(--text-muted); margin-bottom: 20px;">Thương hiệu: <span th:text="${product.brand}" style="color: var(--navy-primary); font-weight: 600;"></span></p>
+         
+          <div class="product-price" style="font-size: 2rem; margin-bottom: 25px;" id="detailPrice"
+               th:text="${product.variants != null and !product.variants.isEmpty() and product.variants[0].price != null ? #numbers.formatDecimal(product.variants[0].price, 0, 'COMMA', 0, 'POINT') + ' ₫' : '0 ₫'}">
+          </div>
+
+          <!-- Variant Selection -->
+          <div th:if="${product.variants != null and !product.variants.isEmpty()}" style="margin-bottom: 30px;">
+            <h4 style="margin-bottom: 12px; color: var(--navy-primary);">Chọn dung lượng:</h4>
+            <div class="category-container" style="justify-content: flex-start;">
+              <div th:each="v, iterStat : ${product.variants}"
+                   th:class="${iterStat.index == 0 ? 'category-pill active' : 'category-pill'}"
+                   style="cursor: pointer;"
+                   th:onclick="'selectVariant(this, ' + ${iterStat.index} + ')'"
+                   th:text="${(v.storageGb != null ? v.storageGb + 'GB' : '') + (v.color != null and !v.color.isEmpty() ? ' - ' + v.color : '')}">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 25px;">
+             <p style="font-size: 0.95rem;">Tình trạng:
+               <span id="stockStatus" th:style="${product.totalStock > 0 ? 'color: #28a745; font-weight: 600;' : 'color: #dc3545; font-weight: 600;'}">
+                 <span th:text="${product.totalStock > 0 ? 'Còn hàng' : 'Hết hàng'}"></span>
+                 (<span id="stockQty" th:text="${product.totalStock}">0</span> sản phẩm)
+               </span>
+             </p>
+          </div>
+
+          <!-- Nút bấm -->
+          <div class="detail-actions" style="display: flex; gap: 15px;">
+            <button id="addCartBtn" onclick="addToCartAction()" class="btn-cta" style="background: var(--navy-primary); color: white; flex: 1; border: none; cursor: pointer;" th:disabled="${product.totalStock le 0}">
+              <i class="fas fa-cart-plus"></i> THÊM VÀO GIỎ
+            </button>
+            <button onclick="buyNow()" class="btn-cta" style="background: var(--accent-gold); color: white; flex: 1; border: none; cursor: pointer;" th:disabled="${product.totalStock le 0}">
+              MUA NGAY
+            </button>
+          </div>
+
+          <div style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 25px;">
+            <h3 class="footer-title" style="color: var(--navy-primary); text-transform: uppercase;">Mô tả sản phẩm</h3>
+            <p style="color: var(--text-muted); line-height: 1.8;" th:text="${product.description != null ? product.description : 'Chưa có mô tả.'}"></p>
+          </div>
+        </div>
+
+        <div class="reviews-section">
+          <h3 class="mb-12">Đánh giá sản phẩm</h3>
+          <div th:if="${#lists.isEmpty(reviews)}">
+            <p class="text-sm text-muted">Chưa có đánh giá nào.</p>
+          </div>
+          <div th:unless="${#lists.isEmpty(reviews)}">
+            <div th:each="r : ${reviews}" class="review-item">
+              <div class="flex items-center gap-8 mb-4">
+                <strong class="text-sm" th:text="${r.customerName}">Khách hàng</strong>
+                <span style="color:var(--warning)">
+                  <i th:each="i : ${#numbers.sequence(1, 5)}" th:class="${r.rating != null and i le r.rating ? 'fas fa-star' : 'far fa-star'}"></i>
+                </span>
+              </div>
+              <p class="text-sm text-muted" th:text="${r.comment}"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item active"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script th:inline="javascript">
+    /*<![CDATA[*/
+    const productData = /*[[${product}]]*/ null;
+    let selectedVariant = productData && productData.variants && productData.variants.length > 0 ? productData.variants[0] : null;
+
+    function changeImage(el, url) {
+      document.getElementById('mainImage').src = url;
+      document.querySelectorAll('.detail-thumb').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function selectVariant(el, idx) {
+      const container = el.closest('.category-container');
+      if (container) {
+        container.querySelectorAll('.category-pill').forEach(c => c.classList.remove('active'));
+      }
+      el.classList.add('active');
+      
+      if (productData && productData.variants) {
+        selectedVariant = productData.variants[idx];
+        updateUIForVariant(selectedVariant);
+      }
+    }
+
+    function updateUIForVariant(variant) {
+      if (!variant) return;
+      
+      const priceEl = document.getElementById('detailPrice');
+      const stockQtyEl = document.getElementById('stockQty');
+      const addBtn = document.getElementById('addCartBtn');
+      
+      if (priceEl && variant.price) {
+        priceEl.textContent = new Intl.NumberFormat('vi-VN').format(variant.price) + ' ₫';
+      }
+      
+      const stock = variant.stockQty || 0;
+      if (stockQtyEl) stockQtyEl.textContent = stock;
+      
+      if (addBtn) {
+        addBtn.disabled = stock <= 0;
+        addBtn.innerHTML = stock <= 0 
+          ? '<i class="fas fa-ban"></i> Hết hàng' 
+          : '<i class="fas fa-cart-plus"></i> THÊM VÀO GIỎ';
+      }
+    }
+
+    async function addToCartAction(redirectTo = '/cart') {
+      if (!selectedVariant) {
+        alert('Vui lòng chọn phiên bản sản phẩm!');
+        return null;
+      }
+      
+      const variantId = selectedVariant.variantId || selectedVariant.variant_id;
+      if (!variantId) {
+        alert('Lỗi: Không tìm thấy ID phiên bản!');
+        return null;
+      }
+
+      try {
+        const response = await fetch(`/api/cart/add/${variantId}?quantity=1`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          alert('Vui lòng đăng nhập bằng tài khoản khách hàng để mua hàng.');
+          window.location.href = '/login';
+          return null;
+        }
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          if (redirectTo) {
+            window.location.href = redirectTo;
+          }
+          return data.itemId;
+        } else {
+          alert(data.message || 'Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại.');
+          return null;
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+        alert('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.');
+        return null;
+      }
+    }
+
+    async function buyNow() {
+      const itemId = await addToCartAction(null);
+      if (itemId) {
+        window.location.href = '/checkout?itemIds=' + itemId;
+      }
+    }
+    /*]]>*/
+  </script>
+</body>
+</html>

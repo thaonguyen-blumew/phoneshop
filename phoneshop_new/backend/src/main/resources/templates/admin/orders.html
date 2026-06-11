@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Xử lý đơn hàng — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+    .status-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:99px;font-size:0.7rem;font-weight:800;white-space:nowrap;text-transform:uppercase;border:1px solid transparent}
+    .s-PENDING  {background:#fff9db;color:#f08c00;border-color:#ffe066}
+    .s-CONFIRMED{background:#e7f5ff;color:#1864ab;border-color:#a5d8ff}
+    .s-PACKING  {background:#f3f0ff;color:#6741d9;border-color:#d0bfff}
+    .s-SHIPPING {background:#e3fafc;color:#0b7285;border-color:#99e9f2}
+    .s-DELIVERED{background:#ebfbee;color:#2b8a3e;border-color:#b2f2bb}
+    .s-CANCELLED{background:#fff5f5;color:#e03131;border-color:#ffa8a8}
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color: var(--white); background: var(--accent-gold); padding: 4px 12px; border-radius: 50px;">ĐƠN HÀNG</span>
+  </header>
+
+  <div class="admin-layout">
+        <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item active"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <h1 class="mb-24" style="color: var(--navy-primary); font-weight: 800;">Xử lý đơn hàng</h1>
+      <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+      <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+      <div class="tabs-scroll" style="background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 24px; box-shadow: var(--shadow-sm); display: flex; gap: 8px; overflow-x: auto;">
+        <a th:href="@{/admin/orders(startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == '' or currentFilter == null ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Tất cả</a>
+        <a th:href="@{/admin/orders(status='PENDING',startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == 'PENDING' ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Chờ xử lý</a>
+        <a th:href="@{/admin/orders(status='CONFIRMED',startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == 'CONFIRMED' ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Xác nhận</a>
+        <a th:href="@{/admin/orders(status='SHIPPING',startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == 'SHIPPING' ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Đang giao</a>
+        <a th:href="@{/admin/orders(status='DELIVERED',startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == 'DELIVERED' ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Đã giao</a>
+        <a th:href="@{/admin/orders(status='CANCELLED',startDate=${startDate},endDate=${endDate})}" class="tab" th:classappend="${currentFilter == 'CANCELLED' ? 'active' : ''}" style="border-radius: 50px; padding: 8px 20px;">Đã hủy</a>
+      </div>
+
+      <div class="toolbar" style="background: var(--white); padding: 16px; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 24px; border: 1px solid var(--border-color);">
+        <form th:action="@{/admin/orders}" method="get" id="filterForm" class="flex gap-16 flex-wrap items-center">
+          <input type="hidden" name="status" th:value="${currentFilter}">
+          <div class="flex items-center gap-8">
+            <span class="text-xs fw-700 text-muted uppercase">Từ ngày</span>
+            <input type="date" name="startDate" id="startDate" class="form-input" th:value="${startDate}" style="width:160px; border-radius: 50px;">
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="text-xs fw-700 text-muted uppercase">Đến ngày</span>
+            <input type="date" name="endDate" id="endDate" class="form-input" th:value="${endDate}" style="width:160px; border-radius: 50px;">
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px; border-radius: 50px;">Lọc đơn hàng</button>
+          <a th:href="@{/admin/orders(status=${currentFilter})}" class="btn btn-outline" style="padding: 10px 24px; border-radius: 50px;">Xóa lọc</a>
+        </form>
+      </div>
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Mã ĐH</th>
+              <th>Khách hàng</th>
+              <th class="hide-mobile">Sản phẩm</th>
+              <th style="width: 140px;">Tổng tiền</th>
+              <th style="width: 120px;">Trạng thái</th>
+              <th class="hide-mobile" style="width: 100px;">PT TT</th>
+              <th class="hide-mobile" style="width: 150px;">Thời gian</th>
+              <th style="text-align: right; width: 150px;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:if="${orders.isEmpty()}">
+              <td colspan="8" class="text-center text-muted" style="padding:48px">Không có đơn hàng nào trong danh sách</td>
+            </tr>
+            <tr th:each="o : ${orders}" class="order-row">
+              <td class="fw-700" style="color: var(--navy-primary);" th:text="'#' + ${o.orderId}"></td>
+              <td class="fw-600" th:text="${o.shippingName != null ? o.shippingName : 'Khách vãng lai'}"></td>
+              <td class="hide-mobile" th:title="${#strings.listJoin(o.items.![productName], ', ')}">
+                <div class="flex flex-wrap gap-8" style="min-width: 250px;">
+                  <div th:each="i : ${o.items}" 
+                       style="background: #f8f9fa; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: var(--navy-primary); display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                    <i class="fas fa-cube" style="font-size: 0.65rem; color: var(--accent-gold);"></i>
+                    <span th:text="${i.productName}"></span>
+                    <span style="font-weight: 800; background: var(--navy-primary); color: white; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem;" th:text="${i.quantity}"></span>
+                  </div>
+                </div>
+              </td>
+              <td class="fw-700 text-danger" style="white-space: nowrap;" th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></td>
+              <td>
+                <span th:class="'status-badge s-' + ${o.status.name()}"
+                      th:text="${o.status.name() == 'PENDING'   ? 'Chờ xử lý'  :
+                                 o.status.name() == 'CONFIRMED' ? 'Đã xác nhận'   :
+                                 o.status.name() == 'PACKING'   ? 'Đang gói'   :
+                                 o.status.name() == 'SHIPPING'  ? 'Đang giao'  :
+                                 o.status.name() == 'DELIVERED' ? 'Hoàn tất'    : 'Đã hủy'}">
+                </span>
+              </td>
+              <td class="hide-mobile text-xs fw-700" th:text="${o.paymentMethod}"></td>
+              <td class="hide-mobile text-xs text-muted" th:text="${#temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
+              <td style="text-align: right;">
+                <div class="flex gap-8 justify-end">
+                  <a th:if="${o.status.name() != 'PENDING' and o.status.name() != 'CANCELLED'}"
+                     th:href="@{/tracking(id=${o.orderId})}" target="_blank"
+                     class="btn btn-outline btn-sm" title="Theo dõi GHN"
+                     style="width: 32px; height: 32px; padding: 0; border-radius: 8px; color: #0071e3; border-color: #0071e3;">
+                    <i class="fas fa-truck"></i>
+                  </a>
+
+                  <div th:if="${o.status.name() == 'PENDING'}" class="flex gap-4">
+                    <form th:action="@{/admin/orders/{id}/receive(id=${o.orderId})}" method="post" style="margin:0">
+                      <button type="submit" class="btn btn-success btn-sm" style="padding: 6px 12px; border-radius: 8px;">Duyệt</button>
+                    </form>
+                    <form th:action="@{/admin/orders/{id}/status(id=${o.orderId})}" method="post" style="margin:0"
+                          onsubmit="return confirm('Từ chối đơn hàng này?')">
+                      <input type="hidden" name="status" value="CANCELLED">
+                      <button type="submit" class="btn btn-danger btn-sm" style="width: 32px; height: 32px; padding: 0; border-radius: 8px;"><i class="fas fa-times"></i></button>
+                    </form>
+                  </div>
+
+                  <form th:if="${o.status.name() == 'CONFIRMED'}" th:action="@{/admin/orders/{id}/status(id=${o.orderId})}" method="post" style="margin:0">
+                    <input type="hidden" name="status" value="PACKING">
+                    <button type="submit" class="btn btn-primary btn-sm" style="padding: 6px 12px; border-radius: 8px;">Gói hàng</button>
+                  </form>
+
+                  <form th:if="${o.status.name() == 'PACKING'}" th:action="@{/admin/orders/{id}/status(id=${o.orderId})}" method="post" style="margin:0">
+                    <input type="hidden" name="status" value="SHIPPING">
+                    <button type="submit" class="btn btn-primary btn-sm" style="padding: 6px 12px; border-radius: 8px;">Giao hàng</button>
+                  </form>
+
+                  <form th:if="${o.status.name() == 'SHIPPING'}" th:action="@{/admin/orders/{id}/status(id=${o.orderId})}" method="post" style="margin:0">
+                    <input type="hidden" name="status" value="DELIVERED">
+                    <button type="submit" class="btn btn-success btn-sm" style="padding: 6px 12px; border-radius: 8px;">Hoàn tất</button>
+                  </form>
+
+                  <span th:if="${o.status.name() == 'DELIVERED'}" class="text-xs fw-700" style="color: #34c759;"><i class="fas fa-check-circle"></i> XONG</span>
+                  <span th:if="${o.status.name() == 'CANCELLED'}" class="text-xs fw-700 text-muted"><i class="fas fa-ban"></i> HỦY</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="pagination" class="pagination-container" style="margin-top: 24px; display: flex; justify-content: center; gap: 8px;"></div>
+    </main>
+  </div>
+  <style>
+    .pagination-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: white;
+        color: var(--navy-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .pagination-btn:hover { background: var(--bg-light); border-color: var(--navy-primary); }
+    .pagination-btn.active { background: var(--navy-primary); color: white; border-color: var(--navy-primary); }
+  </style>
+  <script th:inline="javascript">
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    }
+
+    // Pagination Logic
+    const ITEMS_PER_PAGE = 10;
+    let currentPage = 1;
+
+    function initPagination() {
+      const tbody = document.querySelector('.admin-table tbody');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr.order-row'));
+      if (rows.length === 0) return;
+
+      const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+      const container = document.getElementById('pagination');
+
+      function showPage(page) {
+        currentPage = page;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+
+        rows.forEach((row, index) => {
+          row.style.display = (index >= start && index < end) ? '' : 'none';
+        });
+
+        renderControls();
+      }
+
+      function renderControls() {
+        container.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            const btn = document.createElement('button');
+            btn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+            btn.innerText = i;
+            btn.onclick = () => { 
+                showPage(i); 
+                window.scrollTo({top:0, behavior:'smooth'}); 
+            };
+            container.appendChild(btn);
+          } else if (i === currentPage - 2 || i === currentPage + 2) {
+            const dots = document.createElement('span');
+            dots.innerText = '...';
+            dots.style.alignSelf = 'flex-end';
+            dots.style.paddingBottom = '8px';
+            container.appendChild(dots);
+          }
+        }
+      }
+
+      showPage(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initPagination();
+      
+      // Auto-hide alerts
+      const alerts = document.querySelectorAll('.alert');
+      alerts.forEach(alert => {
+        setTimeout(() => {
+          alert.classList.add('fade-out');
+          setTimeout(() => alert.remove(), 500);
+        }, 5000);
+      });
+    });
+  </script>
+</body>
+</html>

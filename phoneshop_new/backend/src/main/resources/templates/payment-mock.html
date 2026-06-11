@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>VNPAY Sandbox - PhoneShop</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .gateway{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f7fb;padding:16px}
+    .gateway-panel{width:100%;max-width:440px;background:#fff;border:1px solid #dbe3ef;border-radius:8px;box-shadow:0 12px 32px rgba(19,33,68,.12);overflow:hidden}
+    .gateway-head{background:#005baa;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+    .gateway-logo{width:42px;height:42px;border-radius:6px;background:#fff;color:#005baa;display:grid;place-items:center;font-weight:800}
+    .gateway-body{padding:20px}
+    .qr-box{height:180px;border:1px dashed #aac3df;border-radius:8px;display:grid;place-items:center;margin:12px 0 16px;background:#f8fbff;color:#005baa;font-size:4rem}
+    .gateway-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eef2f7;font-size:.9rem}
+    .gateway-actions{display:grid;gap:10px;margin-top:18px}
+  </style>
+</head>
+<body>
+  <main class="gateway">
+    <section class="gateway-panel">
+      <div class="gateway-head">
+        <div class="gateway-logo">VN</div>
+        <div>
+          <h3>VNPAY Sandbox</h3>
+          <div class="text-xs">Mô phỏng cổng thanh toán local</div>
+        </div>
+      </div>
+      <div class="gateway-body">
+        <div id="paymentInfo">
+          <div class="spinner"></div>
+        </div>
+        <div class="qr-box"><i class="fas fa-qrcode"></i></div>
+        <div class="gateway-actions">
+          <button class="btn btn-primary btn-block" id="successBtn" onclick="confirmPayment(true)">
+            <i class="fas fa-check"></i> Thanh toán thành công
+          </button>
+          <button class="btn btn-outline btn-block" id="failBtn" onclick="confirmPayment(false)">
+            <i class="fas fa-times"></i> Hủy thanh toán
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const paymentId = getParam('paymentId');
+
+    document.addEventListener('DOMContentLoaded', loadPayment);
+
+    async function loadPayment() {
+      if (!paymentId) {
+        document.getElementById('paymentInfo').innerHTML = '<p class="text-danger">Thiếu mã thanh toán.</p>';
+        return;
+      }
+      try {
+        const res = await api.get(`/api/payments/${paymentId}/vnpay/mock`);
+        if (res.status === 200 && res.data) {
+          const p = res.data.payment || {};
+          document.getElementById('paymentInfo').innerHTML = `
+            <div class="gateway-row"><span>Mã giao dịch</span><strong>${p.transactionRef || paymentId}</strong></div>
+            <div class="gateway-row"><span>Mã đơn</span><strong>${res.data.orderCode || res.data.orderId || ''}</strong></div>
+            <div class="gateway-row"><span>Số tiền</span><strong>${fmt(res.data.totalAmount || 0)}</strong></div>
+          `;
+        } else {
+          document.getElementById('paymentInfo').innerHTML = `<p class="text-danger">${res.message || 'Không tìm thấy thanh toán'}</p>`;
+        }
+      } catch {
+        document.getElementById('paymentInfo').innerHTML = '<p class="text-danger">Không kết nối được server.</p>';
+      }
+    }
+
+    async function confirmPayment(success) {
+      const successBtn = document.getElementById('successBtn');
+      const failBtn = document.getElementById('failBtn');
+      successBtn.disabled = true;
+      failBtn.disabled = true;
+      try {
+        const action = success ? 'confirm' : 'fail';
+        const res = await api.post(`/api/payments/${paymentId}/vnpay/mock/${action}`);
+        if (res.status === 200) {
+          showToast(success ? 'Đã thanh toán' : 'Thanh toán thất bại', success ? 'success' : 'error');
+          setTimeout(() => navigate(success ? 'orders.html' : 'order-cancel.html', success ? {} : { paymentId }), 900);
+          return;
+        }
+        showToast(res.message || 'Không cập nhật được thanh toán', 'error');
+      } catch {
+        showToast('Lỗi kết nối', 'error');
+      }
+      successBtn.disabled = false;
+      failBtn.disabled = false;
+    }
+  </script>
+</body>
+</html>

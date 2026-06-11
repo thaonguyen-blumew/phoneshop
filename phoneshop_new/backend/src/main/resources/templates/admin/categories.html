@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Quản lý danh mục — PhoneShop Admin</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .product-form-grid{display:grid;gap:20px}
+    @media(min-width:768px){.product-form-grid{grid-template-columns:1fr 1fr}.product-form-grid .full{grid-column:1/-1}}
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header class="header admin-header">
+    <div class="flex items-center gap-12">
+      <button class="header-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <span class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></span>
+    </div>
+    <span class="text-sm fw-700" style="color: var(--white); background: var(--accent-gold); padding: 4px 12px; border-radius: 50px;">DANH MỤC</span>
+  </header>
+
+  <div class="admin-layout">
+        <aside class="sidebar">
+      <div class="sidebar-logo">PHONE<span>SHOP</span></div>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasRole('EMPLOYEE')" th:href="@{/admin/staff-dashboard}" class="sidebar-item"><i class="fas fa-calendar-day"></i> Hôm nay</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/analytics}" class="sidebar-item"><i class="fas fa-chart-line"></i> BI Dashboard</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/products}" class="sidebar-item"><i class="fas fa-box"></i> Sản phẩm</a>
+      <a th:href="@{/admin/categories}" class="sidebar-item active"><i class="fas fa-tags"></i> Danh mục</a>
+      <a th:href="@{/admin/orders}" class="sidebar-item"><i class="fas fa-shopping-cart"></i> Đơn hàng</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/employees}" class="sidebar-item"><i class="fas fa-users"></i> Nhân viên</a>
+      <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/admin/reports}" class="sidebar-item"><i class="fas fa-chart-bar"></i> Báo cáo</a>
+      <a th:href="@{/admin/feedbacks}" class="sidebar-item"><i class="fas fa-headset"></i> CSKH</a>
+      <div style="border-top:1px solid rgba(255,255,255,0.1); margin:16px 0"></div>
+      <a th:href="@{/profile}" class="sidebar-item"><i class="fas fa-user-cog"></i> Hồ sơ</a>
+      <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </form>
+    </aside>
+
+    <main class="admin-main">
+      <div class="flex justify-between items-center mb-24">
+        <h1 style="color: var(--navy-primary); font-weight: 800;">Quản lý danh mục</h1>
+        <button class="btn btn-primary" onclick="openCategoryForm()" style="padding: 12px 24px; border-radius: 50px; font-weight: 700; box-shadow: 0 4px 15px rgba(0,35,71,0.2);">
+          <i class="fas fa-plus"></i> THÊM DANH MỤC
+        </button>
+      </div>
+
+      <div th:if="${message}" class="alert alert-success" th:text="${message}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+      <div th:if="${error}" class="alert alert-error" th:text="${error}" style="border-radius: 12px; margin-bottom: 24px;"></div>
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tên danh mục</th>
+              <th>Slug</th>
+              <th>Danh mục cha</th>
+              <th>Trạng thái</th>
+              <th style="text-align: right;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+             <tr th:if="${categories.isEmpty()}"><td colspan="6" class="text-center text-muted" style="padding:48px">Không tìm thấy danh mục nào</td></tr>
+             <tr th:each="c : ${categories}">
+              <td class="fw-600" th:text="${c.categoryId}"></td>
+              <td>
+                <div class="fw-700" style="font-size: 0.95rem; color: var(--navy-primary);" th:text="${c.name}"></div>
+              </td>
+              <td th:text="${c.slug}"></td>
+              <td th:text="${c.parent != null ? c.parent.name : '-'}"></td>
+              <td>
+                <span th:class="'badge ' + (${c.isActive} ? 'badge-active' : 'badge-inactive')" 
+                      th:text="${c.isActive} ? 'Hoạt động' : 'Tạm ẩn'"></span>
+              </td>
+              <td style="text-align: right;">
+                <div class="flex gap-8 justify-end">
+                  <button class="btn btn-outline btn-sm" style="border-radius: 8px; width: 36px; height: 36px; padding: 0;" th:onclick="'openCategoryFormEdit(' + ${c.categoryId} + ')'" title="Chỉnh sửa"><i class="fas fa-edit"></i></button>
+                  <form th:action="@{/admin/categories/{id}/toggle(id=${c.categoryId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn btn-sm" th:classappend="${c.isActive} ? 'btn-warning' : 'btn-success'" 
+                            style="border-radius: 8px; width: 36px; height: 36px; padding: 0;" th:title="${c.isActive} ? 'Ngừng hoạt động' : 'Kích hoạt lại'">
+                      <i th:class="${c.isActive} ? 'fas fa-pause' : 'fas fa-play'"></i>
+                    </button>
+                  </form>
+                  <form th:action="@{/admin/categories/{id}/delete(id=${c.categoryId})}" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này? Các sản phẩm thuộc danh mục sẽ chuyển sang \'Chưa phân loại\'.');">
+                    <button type="submit" class="btn btn-sm btn-danger" 
+                            style="border-radius: 8px; width: 36px; height: 36px; padding: 0;" title="Xóa danh mục">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  
+  <div class="modal-overlay hidden" id="categoryModal" onclick="if(event.target === this) closeCategoryForm()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="flex justify-between items-center mb-16">
+        <h3 id="modalTitle">Thêm danh mục</h3>
+        <button class="header-icon" onclick="closeCategoryForm()"><i class="fas fa-times"></i></button>
+      </div>
+      <form th:action="@{/admin/categories/save}" method="post" id="categoryForm" class="product-form-grid" th:object="${categoryForm}">
+        <input type="hidden" name="id" id="categoryIdInput">
+        <div class="form-group full">
+          <label class="form-label">Tên danh mục</label>
+          <input type="text" name="name" id="categoryName" class="form-input" required oninput="document.getElementById('categorySlug').value = generateSlug(this.value)">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Slug</label>
+          <input type="text" name="slug" id="categorySlug" class="form-input" required>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Danh mục cha</label>
+          <select name="parentId" id="categoryParentId" class="form-input">
+             <option value="">-- Không có --</option>
+             <option th:each="p : ${parentCategories}" th:value="${p.categoryId}" th:text="${p.name}"></option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Trạng thái</label>
+          <select name="active" id="categoryActive" class="form-input">
+            <option value="true">Hoạt động</option>
+            <option value="false">Tạm ẩn</option>
+          </select>
+        </div>
+        <div class="full flex gap-8 justify-end">
+          <button type="button" class="btn btn-outline" onclick="closeCategoryForm()">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script th:inline="javascript">
+      const categoriesData = /*[[${categories}]]*/ [];
+      
+      function generateSlug(text) {
+          return text.toString().toLowerCase()
+              .replace(/\s+/g, '-')
+              .replace(/[^\w\-]+/g, '')
+              .replace(/\-\-+/g, '-')
+              .replace(/^-+/, '')
+              .replace(/-+$/, '');
+      }
+
+      function openCategoryForm() {
+          document.getElementById('categoryForm').reset();
+          document.getElementById('categoryIdInput').value = '';
+          document.getElementById('categoryActive').value = 'true';
+          document.getElementById('modalTitle').textContent = 'Thêm danh mục';
+          document.getElementById('categoryModal').classList.remove('hidden');
+      }
+      
+      function closeCategoryForm() {
+          document.getElementById('categoryModal').classList.add('hidden');
+      }
+      
+      function openCategoryFormEdit(id) {
+          const c = categoriesData.find(x => x.categoryId === id);
+          if (!c) return;
+          document.getElementById('categoryIdInput').value = c.categoryId;
+          document.getElementById('categoryName').value = c.name || '';
+          document.getElementById('categorySlug').value = c.slug || '';
+          document.getElementById('categoryParentId').value = c.parent ? c.parent.categoryId : '';
+          document.getElementById('categoryActive').value = c.isActive ? 'true' : 'false';
+          document.getElementById('modalTitle').textContent = 'Sửa danh mục';
+          document.getElementById('categoryModal').classList.remove('hidden');
+      }
+
+      function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+      }
+  </script>
+</body>
+</html>

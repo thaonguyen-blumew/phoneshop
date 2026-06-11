@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Theo dõi đơn hàng — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <st  <style>
+    .tracking-container{background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;box-shadow:var(--shadow-sm)}
+    .tracking-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid var(--border-color)}
+    .tracking-status{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:50px;font-size:0.75rem;font-weight:800;text-transform:uppercase}
+    /* === Step Progress Bar === */
+    .step-bar{display:flex;align-items:center;justify-content:space-between;padding:20px 0;margin-bottom:10px;position:relative}
+    .step-bar::before{content:'';position:absolute;top:50%;left:40px;right:40px;height:2px;background:var(--border-color);z-index:0;transform:translateY(-50%)}
+    .step-item{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:1;flex:1}
+    .step-icon{width:40px;height:40px;border-radius:50%;border:2px solid var(--border-color);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:0.9rem;color:var(--text-muted);transition:all 0.3s}
+    .step-icon.completed{background:#34c759;border-color:#34c759;color:#fff}
+    .step-icon.active{background:var(--navy-primary);border-color:var(--navy-primary);color:#fff;box-shadow:0 0 0 4px rgba(0,35,71,0.1)}
+    .step-icon.cancelled{background:#ff3b30;border-color:#ff3b30;color:#fff}
+    .step-label{font-size:0.7rem;font-weight:700;color:var(--text-muted);text-align:center;text-transform:uppercase;letter-spacing:0.5px}
+    .step-label.active{color:var(--navy-primary)}
+    .step-label.completed{color:#34c759}
+    
+    .timeline-time{font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase}
+    .timeline-title{font-weight:800;font-size:1rem;color:var(--navy-primary);margin:4px 0}
+    .timeline-desc{font-size:0.85rem;color:var(--text-main);line-height:1.5}
+    .ghn-box{background:linear-gradient(135deg, #ff6b35, #f7931e);border-radius:12px;padding:20px;margin-top:20px;color:#fff;box-shadow: 0 4px 15px rgba(255,107,53,0.3);}
+    
+    @media(min-width:768px){
+      .tracking-layout{max-width:800px;margin:0 auto;padding:40px 20px}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="header-icon" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></a>
+    </div>
+    <div class="header-actions">
+      <span class="text-sm fw-700" style="color: var(--navy-primary); background: var(--bg-light); padding: 4px 12px; border-radius: 50px;">THEO DÕI ĐƠN</span>
+    </div>
+  </header> </header>
+
+  <main class="page">
+    <div class="tracking-layout" style="padding:0 16px">
+      <div id="trackingContainer"><div style="text-align:center;padding:60px"><div class="spinner"></div></div></div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item active"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script th:src="@{/assets/js/api.js(v='20260502')}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', loadTracking);
+
+    async function loadTracking() {
+      const orderId = getParam('id');
+      if (!orderId) {
+        window.location.href = '/orders';
+        return;
+      }
+
+      try {
+        const res = await api.get(`/api/orders/${orderId}/tracking`);
+        if (res.status === 200 && res.data) {
+          renderTracking(res.data);
+        } else {
+          document.getElementById('trackingContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Không tìm thấy đơn hàng</h3><a href="/orders" class="btn btn-primary btn-sm mt-12">Quay lại</a></div>';
+        }
+      } catch {
+        document.getElementById('trackingContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Lỗi tải thông tin</h3><a href="/orders" class="btn btn-primary btn-sm mt-12">Quay lại</a></div>';
+      }
+    }
+
+    function parseDate(dt) {
+      if (!dt) return '-';
+      if (Array.isArray(dt)) {
+        return new Date(dt[0], dt[1]-1, dt[2], dt[3]||0, dt[4]||0, dt[5]||0).toLocaleString('vi-VN');
+      }
+      return new Date(dt).toLocaleString('vi-VN');
+    }
+
+    function renderTracking(data) {
+      const order = data.order || {};
+      const events = data.events || [];
+      const shipment = data.shipment || {};
+
+      const STEPS = [
+        { status: 'PENDING',   icon: 'clock',         label: 'Đặt hàng' },
+        { status: 'CONFIRMED', icon: 'check-circle',  label: 'Xác nhận' },
+        { status: 'PACKING',   icon: 'box',           label: 'Đóng gói' },
+        { status: 'SHIPPING',  icon: 'truck',         label: 'Đang giao' },
+        { status: 'DELIVERED', icon: 'home',          label: 'Đã nhận' },
+      ];
+
+      const STATUS_META = {
+        'PENDING':   { label: 'Chờ xác nhận', color: '#ff9500' },
+        'CONFIRMED': { label: 'Đã xác nhận',  color: '#34c759' },
+        'PACKING':   { label: 'Đang đóng gói', color: '#5856d6' },
+        'SHIPPING':  { label: 'Đang giao hàng', color: '#0071e3' },
+        'DELIVERED': { label: 'Đã giao',       color: '#34c759' },
+        'CANCELLED': { label: 'Đã hủy',        color: '#ff3b30' },
+      };
+
+      const currentStatus = order.status || 'PENDING';
+      const meta = STATUS_META[currentStatus] || STATUS_META['PENDING'];
+      const isCancelled = currentStatus === 'CANCELLED';
+
+      // Tìm index bước hiện tại
+      const currentStepIdx = STEPS.findIndex(s => s.status === currentStatus);
+
+      // ===== Step Progress Bar =====
+      let stepBarHtml = `<div class="tracking-container">
+        <div class="step-bar">`;
+      STEPS.forEach((step, idx) => {
+        let iconClass = '';
+        let labelClass = '';
+        if (isCancelled) {
+          iconClass = idx === 0 ? 'completed' : '';
+        } else if (idx < currentStepIdx) {
+          iconClass = 'completed'; labelClass = 'completed';
+        } else if (idx === currentStepIdx) {
+          iconClass = 'active'; labelClass = 'active';
+        }
+        stepBarHtml += `<div class="step-item">
+          <div class="step-icon ${iconClass}"><i class="fas fa-${step.icon}"></i></div>
+          <div class="step-label ${labelClass}">${step.label}</div>
+        </div>`;
+      });
+      if (isCancelled) {
+        stepBarHtml += `</div><div style="text-align:center;margin-top:4px"><span class="tracking-status" style="background:rgba(255,59,48,0.1);color:#ff3b30"><i class="fas fa-ban"></i> Đơn hàng đã bị hủy</span></div></div>`;
+      } else {
+        stepBarHtml += `</div></div>`;
+      }
+
+      // ===== Timeline =====
+      let timelineHtml = '<div class="timeline">';
+      const createdAt = order.createdAt ? new Date(Array.isArray(order.createdAt) ?
+        new Date(...order.createdAt.map((v,i) => i === 1 ? v-1 : v)) : order.createdAt) : new Date();
+
+      if (events && events.length > 0) {
+        // Có GHN events thực — dùng data thật
+        const sortedEvents = [...events].sort((a, b) => new Date(b.time) - new Date(a.time));
+        sortedEvents.forEach((item, idx) => {
+          const isActive = idx === 0;
+          const date = item.time ? parseDate(item.time) : '';
+          timelineHtml += `<div class="timeline-item completed ${isActive ? 'active' : ''}">
+            <div class="timeline-time">${date}</div>
+            <div class="timeline-title">${item.statusName || 'Cập nhật trạng thái'}</div>
+            <div class="timeline-desc">${item.location || 'GHN Logistics'}</div>
+          </div>`;
+        });
+      } else {
+        // Fallback: tạo timeline ước tính từ status hiện tại
+        const timelineSteps = [
+          { status: 'PENDING',   title: 'Đơn hàng được đặt',       desc: 'Chúng tôi đã nhận được đơn hàng của bạn', time: order.createdAt },
+          { status: 'CONFIRMED', title: 'Đơn hàng đã xác nhận',    desc: 'Nhân viên đã xác nhận và chuẩn bị hàng', time: order.confirmedAt },
+          { status: 'PACKING',   title: 'Đang đóng gói',           desc: 'Sản phẩm đang được đóng gói cẩn thận', time: null }, // Packing usually shared with Confirmed
+          { status: 'SHIPPING',  title: 'Đã bàn giao GHN',        desc: 'Đơn hàng đang trên đường giao đến bạn', time: order.shippingAt },
+          { status: 'DELIVERED', title: 'Giao hàng thành công',   desc: 'Cảm ơn bạn đã mua sắm tại PhoneShop! 🎉', time: order.deliveredAt },
+          { status: 'CANCELLED', title: 'Đơn hàng đã bị hủy',      desc: 'Đơn hàng không thể tiếp tục xử lý', time: order.cancelledAt }
+        ];
+
+        for (let i = timelineSteps.length - 1; i >= 0; i--) {
+          const step = timelineSteps[i];
+          if (!step.time && step.status !== 'PENDING') continue; // Skip steps without timestamps (except first)
+
+          const isCompleted = !isCancelled && (currentStepIdx >= STEPS.findIndex(s => s.status === step.status) || step.status === 'CANCELLED' && isCancelled);
+          const isActive = step.status === currentStatus;
+
+          if (isCompleted || isActive || (isCancelled && step.status === 'CANCELLED')) {
+            timelineHtml += `<div class="timeline-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">
+              <div class="timeline-time">${parseDate(step.time)}</div>
+              <div class="timeline-title">${step.title}</div>
+              <div class="timeline-desc">${step.desc}</div>
+            </div>`;
+          }
+        }
+      }
+      timelineHtml += '</div>';
+
+      // ===== GHN Info Box =====
+      let ghnBoxHtml = '';
+      if (shipment.ghnOrderCode) {
+        ghnBoxHtml = `<div class="ghn-box">
+          <div style="font-weight:700;margin-bottom:4px"><i class="fas fa-shipping-fast"></i> Mã vận đơn GHN</div>
+          <div style="font-size:1rem;font-weight:800;letter-spacing:1px">${shipment.ghnOrderCode}</div>
+          <a href="https://tracking.ghn.dev/?order_code=${shipment.ghnOrderCode}" target="_blank"
+             style="display:inline-block;margin-top:8px;font-size:0.8125rem;color:#fff;text-decoration:underline">
+            Tra cứu trực tiếp trên GHN →
+          </a>
+        </div>`;
+      }
+
+      // Tổng hợp HTML
+      const html = `
+        <div class="tracking-container">
+          <div class="tracking-header">
+            <div>
+              <div style="font-weight:700;font-size:1rem">#${order.orderCode || order.orderId}</div>
+              <div class="text-xs text-muted">${parseDate(order.createdAt)}</div>
+            </div>
+            <span class="tracking-status" style="background:${meta.color}1a;color:${meta.color}">
+              ${meta.label}
+            </span>
+          </div>
+          ${stepBarHtml.replace('<div class="tracking-container">', '').replace('</div>', '')}
+        </div>
+        
+        <div class="tracking-container">
+          <h4 style="margin-bottom:12px"><i class="fas fa-history" style="color:var(--accent);margin-right:8px"></i>Lịch sử vận chuyển</h4>
+          ${timelineHtml}
+          ${ghnBoxHtml}
+        </div>
+
+        <div class="tracking-container">
+          <h4 style="margin-bottom:12px"><i class="fas fa-map-marker-alt" style="color:var(--accent);margin-right:8px"></i>Thông tin giao hàng</h4>
+          <div class="tracking-detail"><span class="text-muted">Người nhận</span><span class="fw-600">${order.shippingName || '—'}</span></div>
+          <div class="tracking-detail"><span class="text-muted">Số điện thoại</span><span class="fw-600">${order.shippingPhone || '—'}</span></div>
+          <div class="tracking-detail"><span class="text-muted">Địa chỉ</span><span class="fw-600">${order.shippingAddress || '—'}</span></div>
+          <div class="tracking-detail"><span class="text-muted">Phương thức TT</span><span class="fw-600">${order.paymentMethod || '—'}</span></div>
+        </div>
+
+        <div class="tracking-container">
+          <h4 style="margin-bottom:12px"><i class="fas fa-box" style="color:var(--accent);margin-right:8px"></i>Chi tiết đơn hàng</h4>
+          ${(order.items || []).map(item => `
+            <div class="tracking-detail">
+              <span>${item.productName || 'Sản phẩm'} <span class="text-muted">x${item.quantity}</span></span>
+              <span class="fw-600">${fmt(item.unitPrice * item.quantity)}</span>
+            </div>`).join('')}
+          <div style="border-top:2px solid var(--border-light);margin:12px 0;padding-top:12px">
+            <div class="tracking-detail">
+              <span class="fw-600">Phí vận chuyển</span>
+              <span>${(order.shippingFee && order.shippingFee > 0) ? fmt(order.shippingFee) : 'Miễn phí'}</span>
+            </div>
+            <div class="tracking-detail">
+              <span class="fw-700">Tổng cộng</span>
+              <span class="fw-700 text-danger" style="font-size:1.125rem">${fmt(order.totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="/orders" class="btn btn-outline btn-block" style="margin-bottom:16px">
+          <i class="fas fa-arrow-left"></i> Quay lại danh sách đơn
+        </a>
+      `;
+
+      document.getElementById('trackingContainer').innerHTML = html;
+    }
+
+    function contactShipper() {
+      showToast('Hãy gọi shipper để xác nhận thời gian giao hàng', 'info');
+    }
+
+  </script>
+</body>
+</html>

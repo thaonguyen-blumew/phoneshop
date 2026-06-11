@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Gemini CLI",
+      "type": "shell",
+      "command": "gemini",
+      "args": ["code", "${input:prompt}"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "prompt",
+      "type": "promptString",
+      "description": "Nhập yêu cầu cho Gemini CLI"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Sản phẩm — PhoneShop</title>
+  <link rel="stylesheet" th:href="@{/assets/css/style.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .search-bar{display:flex;gap:8px;padding:24px 32px;position:sticky;top:var(--header-h);background:var(--white, #ffffff);z-index:30;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin:0;width:100%}
+    .search-bar input{flex:1}
+    .filter-row{display:flex;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none}
+    .filter-row::-webkit-scrollbar{display:none}
+    @media(min-width:768px){
+      .products-layout{display:flex;gap:24px;padding:32px 32px}
+      .filter-sidebar{width:240px;flex-shrink:0;position:sticky;top:calc(var(--header-h) + 110px);height:fit-content;background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;border:1px solid var(--border-light);box-shadow:var(--shadow-sm)}
+      .filter-sidebar .form-group{margin-bottom:16px}
+      .search-bar{padding:16px 32px}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="mobile-btn" onclick="history.back()"><i class="fas fa-bars"></i></button>
+      <a th:href="@{/}" class="header-logo">PHONE<span style="color:var(--accent-gold)">SHOP</span></a>
+      <nav class="nav-desktop">
+        <a th:href="@{/}" class="nav-link">Trang chủ</a>
+        <a th:href="@{/products}" class="nav-link active">Sản phẩm</a>
+        <a href="#" class="nav-link">Khuyến mãi</a>
+        <a href="#" class="nav-link">Liên hệ</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      <a th:href="@{/cart}" class="header-icon">
+        <i class="fas fa-shopping-bag"></i>
+        <span class="badge" th:text="${cartCount ?: 0}">0</span>
+      </a>
+      <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="header-icon"><i class="fas fa-user-circle"></i></a>
+      <a sec:authorize="isAuthenticated()" th:href="@{/profile}" class="header-icon"><i class="fas fa-user-circle"></i></a>
+    </div>
+  </header>
+
+  <main class="page">
+    <form th:action="@{/products}" method="get" id="filterForm">
+      <div class="search-bar">
+        <div style="display: flex; flex: 1; position: relative;">
+          <input type="text" name="keyword" th:value="${keyword}" class="form-input-custom" placeholder="Tìm kiếm sản phẩm..." style="padding-left: 45px;">
+          <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+        </div>
+        <button type="submit" class="btn-cta" style="background: var(--navy-primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; margin-left: 10px;">TÌM KIẾM</button>
+      </div>
+
+      <div class="filter-row mobile-only" style="padding: 15px 5%; background: white;">
+        <div class="category-container" style="justify-content: flex-start; margin-bottom: 0;">
+          <a th:href="@{/products(keyword=${keyword}, brand='')}" th:classappend="${brand == null || brand == ''} ? 'active' : ''" class="category-pill">Tất cả</a>
+          <a th:href="@{/products(keyword=${keyword}, brand='Apple')}" th:classappend="${brand == 'Apple'} ? 'active' : ''" class="category-pill">Apple</a>
+          <a th:href="@{/products(keyword=${keyword}, brand='Samsung')}" th:classappend="${brand == 'Samsung'} ? 'active' : ''" class="category-pill">Samsung</a>
+          <a th:href="@{/products(keyword=${keyword}, brand='Oppo')}" th:classappend="${brand == 'Oppo'} ? 'active' : ''" class="category-pill">Oppo</a>
+        </div>
+      </div>
+
+      <div class="products-layout">
+        <aside class="filter-sidebar desktop-only">
+          <h4 class="mb-16">Bộ lọc</h4>
+          <div class="form-group">
+            <label class="form-label">Hãng</label>
+            <select name="brand" class="form-input" onchange="this.form.submit()">
+              <option value="" th:selected="${brand == null || brand == ''}">Tất cả</option>
+              <option value="Apple" th:selected="${brand == 'Apple'}">Apple</option>
+              <option value="Samsung" th:selected="${brand == 'Samsung'}">Samsung</option>
+              <option value="Oppo" th:selected="${brand == 'Oppo'}">Oppo</option>
+              <option value="Xiaomi" th:selected="${brand == 'Xiaomi'}">Xiaomi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mức giá</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" name="minPrice" th:value="${minPrice}" class="form-input" placeholder="Từ" style="padding:8px">
+              <input type="number" name="maxPrice" th:value="${maxPrice}" class="form-input" placeholder="Đến" style="padding:8px">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sắp xếp</label>
+            <select name="sort" class="form-input" onchange="this.form.submit()">
+              <option value="" th:selected="${sort == null || sort == ''}">Mới nhất</option>
+              <option value="price_asc" th:selected="${sort == 'price_asc'}">Giá thấp → cao</option>
+              <option value="price_desc" th:selected="${sort == 'price_desc'}">Giá cao → thấp</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-outline btn-block mt-8">Áp dụng bộ lọc</button>
+        </aside>
+
+        <div style="flex:1; min-width:0; padding: 20px 0;">
+          <div class="section" style="padding-top:0">
+            <div class="product-grid">
+              <div th:each="p : ${productsPage.content}" class="product-card" th:onclick="'window.location.href=\'/products/' + ${p.productId} + '\''">
+                <img th:src="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : 'https://placehold.co/400x400/ffffff/002347?text=Phone'}" 
+                     th:alt="${p.name}" class="product-img" 
+                     onerror="this.src='https://placehold.co/400x400/ffffff/002347?text=Phone'">
+                <div class="product-name" th:text="${p.name}">Product Name</div>
+                <div class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'COMMA', 0, 'POINT')} + ' ₫'">Price</div>
+                <div th:if="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--success);font-weight:600;margin-top:8px"><i class="fas fa-check-circle"></i> Còn hàng</div>
+                <div th:unless="${p.totalStock > 0}" style="font-size:0.75rem;color:var(--danger);font-weight:600;margin-top:8px">Hết hàng</div>
+              </div>
+              <div th:if="${#lists.isEmpty(productsPage.content)}" style="grid-column:1/-1">
+                <div class="empty-state" style="padding: 100px 0;">
+                  <i class="fas fa-search" style="font-size: 3rem; opacity: 0.1; margin-bottom: 20px; display: block;"></i>
+                  <h3 style="color: var(--navy-primary);">Không tìm thấy sản phẩm phù hợp</h3>
+                  <a th:href="@{/products}" class="btn-cta" style="background: var(--navy-primary); color: white; margin-top: 20px; display: inline-block;">XÓA BỘ LỌC</a>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Windowed Pagination (Max 5 numbers) -->
+            <div th:if="${productsPage.totalPages > 1}" class="flex justify-center gap-8 mt-20 flex-wrap">
+              <!-- Previous Button -->
+              <a th:if="${!productsPage.first}" 
+                 th:href="@{/products(keyword=${keyword}, brand=${brand}, sort=${sort}, minPrice=${minPrice}, maxPrice=${maxPrice}, page=${productsPage.number - 1})}" 
+                 class="btn btn-outline btn-sm">‹</a>
+              
+              <!-- First Page -->
+              <a th:if="${productsPage.number > 2}" 
+                 th:href="@{/products(keyword=${keyword}, brand=${brand}, sort=${sort}, minPrice=${minPrice}, maxPrice=${maxPrice}, page=0)}" 
+                 class="btn btn-outline btn-sm">1</a>
+              <span th:if="${productsPage.number > 3}" class="text-muted">...</span>
+
+              <!-- Page Numbers Window -->
+              <th:block th:each="i : ${#numbers.sequence(
+                productsPage.number - 2 < 0 ? 0 : productsPage.number - 2, 
+                productsPage.number + 2 > productsPage.totalPages - 1 ? productsPage.totalPages - 1 : productsPage.number + 2
+              )}">
+                <a th:href="@{/products(keyword=${keyword}, brand=${brand}, sort=${sort}, minPrice=${minPrice}, maxPrice=${maxPrice}, page=${i})}"
+                   th:class="${i == productsPage.number ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'}"
+                   th:text="${i + 1}"></a>
+              </th:block>
+
+              <!-- Last Page -->
+              <span th:if="${productsPage.number < productsPage.totalPages - 4}" class="text-muted">...</span>
+              <a th:if="${productsPage.number < productsPage.totalPages - 3}" 
+                 th:href="@{/products(keyword=${keyword}, brand=${brand}, sort=${sort}, minPrice=${minPrice}, maxPrice=${maxPrice}, page=${productsPage.totalPages - 1})}" 
+                 class="btn btn-outline btn-sm" th:text="${productsPage.totalPages}"></a>
+
+              <!-- Next Button -->
+              <a th:if="${!productsPage.last}" 
+                 th:href="@{/products(keyword=${keyword}, brand=${brand}, sort=${sort}, minPrice=${minPrice}, maxPrice=${maxPrice}, page=${productsPage.number + 1})}" 
+                 class="btn btn-outline btn-sm">›</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <footer class="footer">
+      <div class="footer-bottom">© 2026 PhoneShop. All rights reserved.</div>
+    </footer>
+  </main>
+
+  <nav class="bottom-nav">
+    <a th:href="@{/}" class="bottom-nav-item"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+    <a th:href="@{/products}" class="bottom-nav-item active"><i class="fas fa-th-large"></i><span>Sản phẩm</span></a>
+    <a th:href="@{/cart}" class="bottom-nav-item"><i class="fas fa-shopping-bag"></i><span>Giỏ hàng</span></a>
+    <a th:href="@{/orders}" class="bottom-nav-item"><i class="fas fa-box"></i><span>Đơn hàng</span></a>
+    <a th:href="@{/profile}" class="bottom-nav-item"><i class="fas fa-user"></i><span>Tài khoản</span></a>
+  </nav>
+
+  <script>
+    function toggleFilter() {
+      // Logic to toggle filter if needed (not strictly necessary for SSR since mobile handles it via chips mostly, but can be added if needed)
+    }
+  </script>
+</body>
+</html>

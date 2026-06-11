@@ -1,0 +1,277 @@
+// ============================================================
+// FILE: inventory_kpi_measures.dax
+// MÔ TẢ: Tất cả DAX Measures dùng cho trang "Tồn Kho"
+// NGUỒN DỮ LIỆU: phoneshop_dwh
+//   - Fact_Inventory  (date_key, product_key, quantity_on_hand, inventory_value)
+//   - Fact_Sales      (date_key, product_key, customer_key, quantity, unit_price, import_price, ...)
+//   - Dim_Product     (product_key, product_name, brand, category_name, price_tier, color, storage)
+//   - Dim_Date        (date_key, full_date, day, month, quarter, year, is_weekend)
+//
+// LƯU Ý QUAN TRỌNG:
+//   Fact_Inventory là bảng SNAPSHOT (mỗi ngày ghi 1 dòng/sản phẩm),
+//   KHÔNG phải bảng tích lũy. Mọi SUM phải lọc theo ngày snapshot mới nhất.
+// ============================================================
+
+
+// ============================================================
+// SECTION A – MEASURES NỀN TẢNG (Foundation)
+// ============================================================
+
+// A1. Ngày snapshot mới nhất trong context lọc hiện tại
+Latest Date Key =
+    MAX ( Fact_Inventory[date_key] )
+
+
+// A2. Tổng số lượng tồn kho (snapshot mới nhất)
+//     FIX: Phải lọc date_key = Latest Date Key, KHÔNG dùng SUM toàn bảng
+Total Qty On Hand =
+    CALCULATE (
+        SUM ( Fact_Inventory[quantity_on_hand] ),
+        Fact_Inventory[date_key] = [Latest Date Key]
+    )
+
+
+// A3. Tổng giá trị tồn kho (snapshot mới nhất)
+//     inventory_value = quantity_on_hand × import_price (đã tính trong ETL pipeline)
+Total Inventory Value =
+    CALCULATE (
+        SUM ( Fact_Inventory[inventory_value] ),
+        Fact_Inventory[date_key] = [Latest Date Key]
+    )
+
+
+// A4. Số ngày trong kỳ đang lọc (dùng cho DSI)
+Days in Period =
+    DATEDIFF (
+        MIN ( Dim_Date[full_date] ),
+        MAX ( Dim_Date[full_date] ),
+        DAY
+    ) + 1
+
+
+// ============================================================
+// SECTION B – KPI CARDS
+// ============================================================
+
+// B1. Tổng SKU đang có hàng (quantity > 0)
+SKU Count In Stock =
+    CALCULATE (
+        COUNTROWS ( Fact_Inventory ),
+        Fact_Inventory[date_key] = [Latest Date Key],
+        Fact_Inventory[quantity_on_hand] > 0
+    )
+
+
+// B2. Số SKU sắp hết hàng (0 < qty ≤ ngưỡng)
+//     Gợi ý: Tạo What-if Parameter "Low Stock Threshold" với giá trị mặc định = 5
+Low Stock Threshold = 5   // Thay bằng Parameter nếu muốn người dùng điều chỉnh
+
+SKU Low Stock Count =
+    CALCULATE (
+        COUNTROWS ( Fact_Inventory ),
+        Fact_Inventory[date_key] = [Latest Date Key],
+        Fact_Inventory[quantity_on_hand] > 0,
+        Fact_Inventory[quantity_on_hand] <= [Low Stock Threshold]
+    )
+
+
+// B3. Số SKU hết hàng hoàn toàn (qty = 0)
+SKU Out Of Stock =
+    CALCULATE (
+        COUNTROWS ( Fact_Inventory ),
+        Fact_Inventory[date_key] = [Latest Date Key],
+        Fact_Inventory[quantity_on_hand] = 0
+    )
+
+
+// B4. Tỷ lệ hết hàng (Stockout Rate)
+//     FIX: Mẫu số dùng DISTINCTCOUNT Dim_Product, không phải COUNTROWS Fact_Inventory toàn bảng
+Total SKU Catalog =
+    DISTINCTCOUNT ( Dim_Product[product_key] )
+
+Stockout Rate =
+    DIVIDE (
+        [SKU Out Of Stock],
+        [Total SKU Catalog],
+        0
+    )
+
+
+// ============================================================
+// SECTION C – VÒNG QUAY TỒN KHO (Inventory Turnover)
+// ============================================================
+
+// C1. COGS (Giá vốn hàng bán) – LẤY TỪ Fact_Sales, không phải Fact_Inventory
+//     FIX: COGS = quantity × import_price từ dòng bán hàng thực tế
+COGS =
+    SUMX (
+        Fact_Sales,
+        Fact_Sales[quantity] * Fact_Sales[import_price]
+    )
+
+
+// C2. Giá trị tồn kho bình quân trong kỳ
+//     FIX: Trung bình qua TẤT CẢ snapshot trong kỳ, không phải chỉ snapshot cuối
+Avg Inventory Value =
+    AVERAGEX (
+        VALUES ( Fact_Inventory[date_key] ),
+        CALCULATE ( SUM ( Fact_Inventory[inventory_value] ) )
+    )
+
+
+// C3. Vòng quay tồn kho (Inventory Turnover)
+//     Công thức: COGS / Giá trị tồn kho bình quân
+//     FIX: Dùng DIVIDE để tránh lỗi chia cho 0
+Inventory Turnover =
+    DIVIDE (
+        [COGS],
+        [Avg Inventory Value],
+        0
+    )
+
+
+// C4. DSI – Ngày tồn bình quân (Days Sales of Inventory)
+//     Công thức: Số ngày trong kỳ / Vòng quay tồn kho
+//     FIX: Dùng [Days in Period] động thay vì cứng 365
+DSI =
+    DIVIDE (
+        [Days in Period],
+        [Inventory Turnover],
+        BLANK()
+    )
+
+
+// ============================================================
+// SECTION D – HÀNG TỒN CHẬM / CHẾT (Dead Stock)
+// ============================================================
+
+// D1. Ngưỡng xác định hàng tồn chậm (số ngày không bán)
+//     Gợi ý: Tạo What-if Parameter "Dead Stock Days" mặc định = 90
+Dead Stock Days = 90   // Thay bằng Parameter nếu muốn người dùng điều chỉnh
+
+
+// D2. Tập SKU có ít nhất 1 đơn bán trong N ngày gần nhất
+//     Dùng CALCULATETABLE để tạo virtual table
+Active SKU Last N Days =
+    CALCULATETABLE (
+        VALUES ( Fact_Sales[product_key] ),
+        Dim_Date[full_date] >= TODAY() - [Dead Stock Days]
+    )
+
+
+// D3. Số SKU tồn kho nhưng không có đơn bán trong N ngày (hàng chết)
+Dead Stock SKU Count =
+    CALCULATE (
+        COUNTROWS ( Fact_Inventory ),
+        Fact_Inventory[date_key] = [Latest Date Key],
+        Fact_Inventory[quantity_on_hand] > 0,
+        NOT Fact_Inventory[product_key] IN [Active SKU Last N Days]
+    )
+
+
+// D4. Tỷ lệ hàng tồn chậm (Dead Stock Rate)
+Dead Stock Rate =
+    DIVIDE (
+        [Dead Stock SKU Count],
+        [SKU Count In Stock],
+        0
+    )
+
+
+// ============================================================
+// SECTION E – MEASURES CHO BIỂU ĐỒ
+// ============================================================
+
+// E1. Tổng qty tồn theo tháng (dùng cho Line Chart xu hướng)
+//     Lưu ý: Snapshot theo ngày, trục X theo tháng → lấy snapshot CUỐI THÁNG
+Qty On Hand by Month =
+    CALCULATE (
+        SUM ( Fact_Inventory[quantity_on_hand] ),
+        Fact_Inventory[date_key] =
+            CALCULATE (
+                MAX ( Fact_Inventory[date_key] ),
+                ALLEXCEPT ( Dim_Date, Dim_Date[year], Dim_Date[month] )
+            )
+    )
+
+
+// E2. Giá trị tồn kho theo Brand (dùng cho Bar Chart)
+Inventory Value by Brand =
+    CALCULATE (
+        SUM ( Fact_Inventory[inventory_value] ),
+        Fact_Inventory[date_key] = [Latest Date Key]
+    )
+
+
+// E3. % Giá trị tồn theo Price Tier (dùng cho Donut Chart)
+Inventory Value Share =
+    DIVIDE (
+        [Total Inventory Value],
+        CALCULATE ( [Total Inventory Value], ALL ( Dim_Product[price_tier] ) ),
+        0
+    )
+
+
+// E4. Qty On Hand cho từng sản phẩm (dùng cho Top 10 Bar ngang)
+Qty On Hand Per Product =
+    CALCULATE (
+        SUM ( Fact_Inventory[quantity_on_hand] ),
+        Fact_Inventory[date_key] = [Latest Date Key]
+    )
+
+
+// ============================================================
+// SECTION F – CONDITIONAL FORMATTING (dùng cho bảng chi tiết)
+// ============================================================
+
+// F1. Màu cảnh báo cho cột quantity_on_hand trong bảng
+//     Trả về mã màu HEX: đỏ nếu sắp hết, vàng nếu trung bình, xanh nếu tốt
+Stock Status Color =
+    VAR qty = [Qty On Hand Per Product]
+    RETURN
+        SWITCH (
+            TRUE(),
+            qty = 0,              "#FF4444",   // Đỏ: hết hàng
+            qty <= [Low Stock Threshold], "#FFA500",   // Cam: sắp hết
+            qty <= 20,            "#FFD700",   // Vàng: cần theo dõi
+            "#00C851"                          // Xanh: tốt
+        )
+
+
+// F2. Label trạng thái tồn kho
+Stock Status Label =
+    VAR qty = [Qty On Hand Per Product]
+    RETURN
+        SWITCH (
+            TRUE(),
+            qty = 0,              "🔴 Hết hàng",
+            qty <= [Low Stock Threshold], "🟠 Sắp hết",
+            qty <= 20,            "🟡 Theo dõi",
+            "🟢 Đủ hàng"
+        )
+
+
+// ============================================================
+// BẢNG TÓM TẮT LỖI THƯỜNG GẶP & CÁCH SỬA
+// ============================================================
+//
+// ❌ LỖI 1: Dùng SUM(Fact_Inventory[quantity_on_hand]) không lọc ngày
+//    → Kết quả = tổng TẤT CẢ snapshot → phình N lần
+//    ✅ FIX: Luôn thêm Fact_Inventory[date_key] = [Latest Date Key]
+//
+// ❌ LỖI 2: COGS = SUM(Fact_Inventory[inventory_value]) hiện tại
+//    → inventory_value là giá trị tồn, KHÔNG phải giá vốn đã bán
+//    ✅ FIX: COGS = SUMX(Fact_Sales, quantity * import_price)
+//
+// ❌ LỖI 3: DSI = 365 / [Inventory Turnover] (cứng 365 ngày)
+//    → Sai khi kỳ lọc không phải 1 năm (ví dụ: lọc Q1 = 90 ngày)
+//    ✅ FIX: DSI = [Days in Period] / [Inventory Turnover]
+//
+// ❌ LỖI 4: Stockout Rate = [SKU Out Of Stock] / COUNTROWS(Fact_Inventory)
+//    → Mẫu số thay đổi theo context lọc → tỷ lệ sai
+//    ✅ FIX: Mẫu số = DISTINCTCOUNT(Dim_Product[product_key])
+//
+// ❌ LỖI 5: Dùng ALL() trong Avg Inventory Value → xóa mất filter brand/category
+//    ✅ FIX: Dùng ALLEXCEPT hoặc không dùng ALL khi không cần
+//
+// ============================================================
